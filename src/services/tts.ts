@@ -1,21 +1,14 @@
 import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
-import { getConfig, paths } from '../config';
+import { getConfig } from '../config';
 
 /**
- * Gera audio MP3 com a voz configurada da ElevenLabs e salva em disco.
- * Retorna o caminho do arquivo gerado.
+ * Gera audio MP3 com a voz configurada e retorna o Buffer (sem salvar em disco).
  */
-export async function textToSpeech(text: string, filename: string): Promise<string> {
-  const cfg = getConfig();
+export async function textToSpeech(text: string): Promise<Buffer> {
+  const cfg = await getConfig();
   if (!cfg.elevenlabs.apiKey) throw new Error('ELEVENLABS_API_KEY nao configurado');
 
-  fs.mkdirSync(paths.audioDir, { recursive: true });
-  const outPath = path.join(paths.audioDir, filename);
-
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${cfg.elevenlabs.voiceId}`;
-
   const resp = await axios.post(
     url,
     {
@@ -39,6 +32,5 @@ export async function textToSpeech(text: string, filename: string): Promise<stri
     },
   );
 
-  fs.writeFileSync(outPath, Buffer.from(resp.data));
-  return outPath;
+  return Buffer.from(resp.data);
 }

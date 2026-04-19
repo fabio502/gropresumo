@@ -5,17 +5,26 @@ import { sendWhatsappAudio, sendWhatsappText } from './whatsapp';
 import { sendTelegramAudio, sendTelegramText } from './telegram';
 import type { Platform } from '../types';
 
+export interface PipelineResult {
+  ok: boolean;
+  messageCount: number;
+  text?: string;
+  audioBytes?: number;
+  reason?: string;
+}
+
 /**
  * Pipeline completo: ler mensagens da janela -> resumir -> TTS -> enviar audio.
+ * Tudo em memoria (sem disco), pronto para serverless.
  */
 export async function runSummaryPipeline(
   platform: Platform,
   groupId: string,
   windowHours: number,
-): Promise<{ ok: boolean; messageCount: number; text?: string; audioPath?: string | null; reason?: string }> {
+): Promise<PipelineResult> {
   const windowEnd = Date.now();
   const windowStart = windowEnd - windowHours * 60 * 60 * 1000;
-  const messages = getMessagesInWindow(platform, groupId, windowStart, windowEnd);
+  const messages = await getMessagesInWindow(platform, groupId, windowStart, windowEnd);
 
   console.log(`[pipeline] ${platform}/${groupId}: ${messages.length} mensagens na janela`);
   if (messages.length < 3) {
@@ -23,31 +32,34 @@ export async function runSummaryPipeline(
   }
 
   const text = await summarize(messages);
-  if (!text) {
-    return { ok: false, messageCount: messages.length, reason: 'resumo vazio' };
-  }
+  if (!text) return { ok: false, messageCount: messages.length, reason: 'resumo vazio' };
 
-  const filename = `${platform}_${groupId.replace(/[^a-zA-Z0-9]/g, '_')}_${windowEnd}.mp3`;
-  let audioPath: string | null = null;
+  let audio: Buffer | null = null;
   try {
-    audioPath = await textToSpeech(text, filename);
+    audio = await textToSpeech(text);
   } catch (err) {
-    console.error('[pipeline] falha TTS, enviando como texto:', err);
+    console.error('[pipeline] falha TTS, vai enviar como texto:', err);
   }
 
   try {
     if (platform === 'whatsapp') {
-      if (audioPath) await sendWhatsappAudio(groupId, audioPath);
+      if (audio) await sendWhatsappAudio(groupId, audio);
       else await sendWhatsappText(groupId, `Resumo do grupo:\n\n${text}`);
     } else {
-      if (audioPath) await sendTelegramAudio(groupId, audioPath);
+      if (audio) await sendTelegramAudio(groupId, audio);
       else await sendTelegramText(groupId, `Resumo do grupo:\n\n${text}`);
     }
-  } catch (err) {
-    console.error('[pipeline] falha ao enviar mensagem:', err);
-    return { ok: false, messageCount: messages.length, text, audioPath, reason: 'falha no envio' };
+  } catch (err: any) {
+    console.error('[pipeline] falha ao enviar:', err);
+    return {
+      ok: false,
+      messageCount: messages.length,
+      text,
+      audioBytes: audio?.length,
+      reason: `falha no envio: ${err?.message ?? err}`,
+    };
   }
 
-  saveSummary(platform, groupId, windowStart, windowEnd, text, audioPath);
-  return { ok: true, messageCount: messages.length, text, audioPath };
+  await saveSummary(platform, groupId, windowStart, windowEnd, text);
+  return { ok: true, messageCount: messages.length, text, audioBytes: audio?.length };
 }

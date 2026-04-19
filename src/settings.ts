@@ -1,8 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { ensureSchema, sql } from './db';
 
 export interface AppSettings {
   evolution: {
@@ -25,14 +21,11 @@ export interface AppSettings {
     model: string;
   };
   scheduler: {
-    cron: string;
-    timezone: string;
     windowHours: number;
   };
 }
 
-const DATA_DIR = process.env.DATA_DIR ?? 'data';
-const SETTINGS_PATH = path.join(DATA_DIR, 'settings.json');
+const SETTINGS_KEY = 'app';
 
 function parseList(s?: string): string[] {
   return (s ?? '')
@@ -65,15 +58,10 @@ function defaults(): AppSettings {
       model: process.env.ELEVENLABS_MODEL ?? 'eleven_multilingual_v2',
     },
     scheduler: {
-      cron: process.env.SUMMARY_CRON ?? '0 20 * * *',
-      timezone: process.env.SUMMARY_TIMEZONE ?? 'America/Sao_Paulo',
       windowHours: Number(process.env.SUMMARY_WINDOW_HOURS ?? 24),
     },
   };
 }
-
-let cache: AppSettings | null = null;
-const listeners: Array<(s: AppSettings) => void> = [];
 
 function deepMerge<T>(base: T, patch: any): T {
   if (Array.isArray(base) || typeof base !== 'object' || base === null) {
@@ -99,42 +87,22 @@ function deepMerge<T>(base: T, patch: any): T {
   return out as T;
 }
 
-export function loadSettings(): AppSettings {
-  if (cache) return cache;
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  const base = defaults();
-  if (fs.existsSync(SETTINGS_PATH)) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
-      cache = deepMerge(base, raw);
-    } catch (err) {
-      console.error('[settings] arquivo invalido, usando defaults:', err);
-      cache = base;
-    }
-  } else {
-    cache = base;
-  }
-  return cache;
+export async function loadSettings(): Promise<AppSettings> {
+  await ensureSchema();
+  const rows = await sql<{ value: any }[]>`SELECT value FROM settings WHERE key = ${SETTINGS_KEY}`;
+  const stored = rows[0]?.value ?? {};
+  return deepMerge(defaults(), stored);
 }
 
-export function saveSettings(patch: Partial<AppSettings>): AppSettings {
-  const current = loadSettings();
+export async function saveSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
+  const current = await loadSettings();
   const merged = deepMerge(current, patch);
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2));
-  cache = merged;
-  for (const fn of listeners) {
-    try {
-      fn(merged);
-    } catch (err) {
-      console.error('[settings] listener error:', err);
-    }
-  }
+  await sql`
+    INSERT INTO settings (key, value)
+    VALUES (${SETTINGS_KEY}, ${sql.json(merged as any)})
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+  `;
   return merged;
-}
-
-export function onSettingsChange(fn: (s: AppSettings) => void): void {
-  listeners.push(fn);
 }
 
 const SECRET_KEYS = new Set(['apiKey', 'token']);
@@ -151,4 +119,20 @@ export function maskSecrets(s: AppSettings): AppSettings {
   };
   walk(clone);
   return clone;
+}
+
+export function sanitizePatch(input: any): Partial<AppSettings> {
+  if (!input || typeof input !== 'object') return {};
+  const out: any = {};
+  for (const [k, v] of Object.entries(input)) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      out[k] = sanitizePatch(v);
+    } else if (SECRET_KEYS.has(k)) {
+      const s = String(v ?? '').trim();
+      if (s && !s.includes('…') && !s.includes('•')) out[k] = s;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
 }

@@ -1,11 +1,10 @@
 import axios from 'axios';
-import fs from 'fs';
 import { getConfig } from '../config';
 import { saveMessage } from '../db';
 import type { StoredMessage } from '../types';
 
-function client() {
-  const cfg = getConfig();
+async function client() {
+  const cfg = await getConfig();
   return axios.create({
     baseURL: cfg.evolution.url,
     headers: {
@@ -17,11 +16,10 @@ function client() {
 }
 
 /**
- * Recebe o payload do webhook da Evolution API (evento MESSAGES_UPSERT)
- * e persiste mensagens de grupos configurados.
+ * Recebe payload do webhook da Evolution API (event MESSAGES_UPSERT) e persiste mensagens.
  */
-export function handleEvolutionWebhook(payload: any): void {
-  const cfg = getConfig();
+export async function handleEvolutionWebhook(payload: any): Promise<void> {
+  const cfg = await getConfig();
   const event: string = payload?.event ?? '';
   if (!event.toLowerCase().includes('messages.upsert')) return;
 
@@ -56,27 +54,28 @@ export function handleEvolutionWebhook(payload: any): void {
       content: text,
       timestamp: ts,
     };
-    saveMessage(msg);
+    await saveMessage(msg);
   }
 }
 
 export async function sendWhatsappText(groupId: string, text: string): Promise<void> {
-  const cfg = getConfig();
-  await client().post(`/message/sendText/${cfg.evolution.instance}`, {
+  const cfg = await getConfig();
+  const c = await client();
+  await c.post(`/message/sendText/${cfg.evolution.instance}`, {
     number: groupId,
     text,
   });
 }
 
 /**
- * Envia audio como mensagem de voz (PTT) no grupo.
+ * Envia audio (Buffer) como mensagem de voz (PTT) no grupo.
  */
-export async function sendWhatsappAudio(groupId: string, audioPath: string): Promise<void> {
-  const cfg = getConfig();
-  const audioBase64 = fs.readFileSync(audioPath).toString('base64');
-  await client().post(`/message/sendWhatsAppAudio/${cfg.evolution.instance}`, {
+export async function sendWhatsappAudio(groupId: string, audio: Buffer): Promise<void> {
+  const cfg = await getConfig();
+  const c = await client();
+  await c.post(`/message/sendWhatsAppAudio/${cfg.evolution.instance}`, {
     number: groupId,
-    audio: audioBase64,
+    audio: audio.toString('base64'),
     delay: 1200,
     encoding: true,
   });

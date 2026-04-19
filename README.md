@@ -1,77 +1,75 @@
 # GrupResumo
 
-Captura mensagens de grupos do **WhatsApp** (via Evolution API) e **Telegram**, gera um **resumo com IA** (Claude) e envia o resumo em **audio** (ElevenLabs) de volta no grupo.
+Captura mensagens de grupos do **WhatsApp** (via Evolution API) e **Telegram**, gera **resumo com IA** (Claude) e envia o resumo em **áudio** (ElevenLabs) de volta no grupo.
+
+Stack: **Next.js 15 (App Router) + Postgres + Vercel Cron** — pronto para deploy na Vercel.
 
 ## Fluxo
 
-1. Recebe mensagens do grupo (webhook Evolution / bot Telegram).
-2. Armazena no SQLite (`data/grupresumo.db`).
-3. Em horario agendado, le a janela de mensagens (padrao 24h).
-4. Gera resumo com Claude (`claude-opus-4-7`).
-5. Gera MP3 com ElevenLabs.
-6. Envia o audio no proprio grupo.
+1. Webhook da Evolution / webhook do Telegram chega no app.
+2. Mensagem é gravada no Postgres.
+3. Vercel Cron dispara `/api/cron/summary` no horário configurado.
+4. Pipeline lê janela de mensagens, gera resumo com Claude, gera MP3 com ElevenLabs.
+5. Áudio é enviado de volta no grupo.
 
-## Requisitos
+## Deploy na Vercel
 
-- Node.js **22+** (usa `node:sqlite` nativo)
-- Conta na Evolution API com instancia conectada (WhatsApp)
-- Bot do Telegram + token do BotFather (opcional)
-- Chaves: Anthropic + ElevenLabs
+1. **Postgres**: instale o **Neon** (ou outro Postgres) via Marketplace da Vercel — ele cria `DATABASE_URL` automático.
+2. **Variáveis de ambiente** no Vercel:
+   - `DATABASE_URL` (vem do Marketplace)
+   - `CRON_SECRET` — string aleatória (Vercel envia `Authorization: Bearer ${CRON_SECRET}` para o cron)
+   - `APP_URL` (opcional) — URL pública, usada para registrar webhook do Telegram
+3. **Deploy** (`vercel --prod` ou push no GitHub conectado).
+4. **Configurar pela UI**: abra o domínio do app, preencha API keys e IDs de grupos.
+5. **Apontar webhooks externos**:
+   - Evolution API → `POST https://SEU_APP/api/evolution` (evento `MESSAGES_UPSERT`)
+   - Telegram: clique no botão **Registrar webhook do Telegram** na UI (chama `setWebhook` automaticamente).
 
-## Setup
+## Cron
+
+`vercel.json` agenda `/api/cron/summary` para `0 23 * * *` (UTC) — equivale a 20h horário de Brasília. Edite o `schedule` se quiser outro horário (lembre que Vercel Cron usa UTC).
+
+## Dev local
 
 ```bash
+cp .env.example .env.local   # preencha DATABASE_URL e (opcional) outras
 npm install
-npm run build
-npm start
+npm run dev
 ```
 
-Em desenvolvimento: `npm run dev`.
+Abra `http://localhost:3000`.
 
-**Configuração**: abra `http://localhost:3000/` no navegador para preencher API keys, IDs de grupos e cron pela própria UI. Tudo é persistido em `data/settings.json` e aplicado em hot-reload (sem precisar reiniciar). O `.env` continua funcionando como valor inicial / fallback.
+## Endpoints
 
-## Configuracao do webhook (WhatsApp)
-
-Aponte a Evolution API para `POST http://SEU_HOST:3000/evolution`, escutando o evento **`MESSAGES_UPSERT`**. Coloque os IDs dos grupos (`...@g.us`) em `WHATSAPP_GROUPS`.
-
-## Configuracao do Telegram
-
-1. Crie o bot com @BotFather, copie o token para `TELEGRAM_BOT_TOKEN`.
-2. Adicione o bot ao grupo e desative o **Privacy Mode** (`/setprivacy` no BotFather) para ele ver mensagens.
-3. Coloque os chat IDs em `TELEGRAM_GROUPS` (numeros negativos para grupos/supergrupos).
-
-## Agendamento
-
-`SUMMARY_CRON` controla quando o resumo roda (padrao: `0 20 * * *` = todo dia as 20h). `SUMMARY_WINDOW_HOURS` define a janela considerada.
-
-## Disparo manual
-
-```bash
-# CLI
-npm run summarize -- whatsapp 12036304xxxxx@g.us 24
-npm run summarize -- telegram -1001234567890 12
-
-# HTTP
-curl -X POST http://localhost:3000/summary/run \
-  -H "Content-Type: application/json" \
-  -d '{"platform":"whatsapp","groupId":"12036304xxxxx@g.us","windowHours":24}'
-```
+| Rota | Método | Descrição |
+|---|---|---|
+| `/` | GET | UI de configuração |
+| `/api/settings` | GET / PUT | Lê e atualiza settings (no Postgres) |
+| `/api/evolution` | POST | Webhook Evolution API |
+| `/api/telegram` | POST | Webhook Telegram |
+| `/api/telegram/webhook` | POST / DELETE | Registra/remove o webhook do Telegram |
+| `/api/summary/run` | POST | Disparo manual do pipeline |
+| `/api/cron/summary` | GET | Endpoint do Vercel Cron (autenticado) |
 
 ## Estrutura
 
 ```
+app/                      # Next.js App Router
+  layout.tsx, page.tsx    # UI de config
+  globals.css
+  api/
+    settings/route.ts
+    evolution/route.ts
+    telegram/route.ts
+    telegram/webhook/route.ts
+    summary/run/route.ts
+    cron/summary/route.ts
 src/
-  index.ts            # boot: HTTP + Telegram + scheduler
-  config.ts           # env
-  db.ts               # SQLite (node:sqlite)
-  types.ts
-  routes/webhook.ts   # POST /evolution, /summary/run, /health
+  config.ts, settings.ts, types.ts
+  db.ts                   # Postgres (postgres.js)
   services/
-    whatsapp.ts       # parse webhook + sender Evolution
-    telegram.ts       # bot Telegraf
-    summarizer.ts     # Claude
-    tts.ts            # ElevenLabs
-    pipeline.ts       # orquestra: ler -> resumir -> TTS -> enviar
-    scheduler.ts      # node-cron
-  cli/summarize.ts    # disparo manual
+    whatsapp.ts, telegram.ts
+    summarizer.ts, tts.ts
+    pipeline.ts
+vercel.json               # Vercel Cron
 ```

@@ -1,87 +1,105 @@
-import { DatabaseSync } from 'node:sqlite';
-import fs from 'fs';
-import path from 'path';
-import { paths } from './config';
+import postgres from 'postgres';
 import type { Platform, StoredMessage } from './types';
 
-fs.mkdirSync(path.dirname(paths.databasePath), { recursive: true });
-
-export const db = new DatabaseSync(paths.databasePath);
-db.exec('PRAGMA journal_mode = WAL');
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS messages (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    platform    TEXT NOT NULL,
-    group_id    TEXT NOT NULL,
-    group_name  TEXT,
-    sender_id   TEXT NOT NULL,
-    sender_name TEXT NOT NULL,
-    content     TEXT NOT NULL,
-    timestamp   INTEGER NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_messages_group_time
-    ON messages (platform, group_id, timestamp);
-
-  CREATE TABLE IF NOT EXISTS summaries (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    platform     TEXT NOT NULL,
-    group_id     TEXT NOT NULL,
-    window_start INTEGER NOT NULL,
-    window_end   INTEGER NOT NULL,
-    text         TEXT NOT NULL,
-    audio_path   TEXT,
-    created_at   INTEGER NOT NULL
-  );
-`);
-
-const insertStmt = db.prepare(`
-  INSERT INTO messages (platform, group_id, group_name, sender_id, sender_name, content, timestamp)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
-
-export function saveMessage(msg: StoredMessage): void {
-  if (!msg.content?.trim()) return;
-  insertStmt.run(
-    msg.platform,
-    msg.groupId,
-    msg.groupName ?? null,
-    msg.senderId,
-    msg.senderName,
-    msg.content,
-    msg.timestamp,
-  );
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL nao configurado');
 }
 
-const selectStmt = db.prepare(`
-  SELECT id, platform, group_id as groupId, group_name as groupName,
-         sender_id as senderId, sender_name as senderName, content, timestamp
-  FROM messages
-  WHERE platform = ? AND group_id = ? AND timestamp >= ? AND timestamp <= ?
-  ORDER BY timestamp ASC
-`);
+declare global {
+  // eslint-disable-next-line no-var
+  var __sql: ReturnType<typeof postgres> | undefined;
+}
 
-export function getMessagesInWindow(
+export const sql =
+  global.__sql ??
+  postgres(process.env.DATABASE_URL!, {
+    ssl: 'require',
+    max: 5,
+    idle_timeout: 20,
+    connect_timeout: 30,
+  });
+
+if (process.env.NODE_ENV !== 'production') global.__sql = sql;
+
+let initialized = false;
+export async function ensureSchema(): Promise<void> {
+  if (initialized) return;
+  await sql.unsafe(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id          BIGSERIAL PRIMARY KEY,
+      platform    TEXT NOT NULL,
+      group_id    TEXT NOT NULL,
+      group_name  TEXT,
+      sender_id   TEXT NOT NULL,
+      sender_name TEXT NOT NULL,
+      content     TEXT NOT NULL,
+      timestamp   BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_messages_group_time
+      ON messages (platform, group_id, timestamp);
+
+    CREATE TABLE IF NOT EXISTS summaries (
+      id           BIGSERIAL PRIMARY KEY,
+      platform     TEXT NOT NULL,
+      group_id     TEXT NOT NULL,
+      window_start BIGINT NOT NULL,
+      window_end   BIGINT NOT NULL,
+      text         TEXT NOT NULL,
+      created_at   BIGINT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value JSONB NOT NULL
+    );
+  `);
+  initialized = true;
+}
+
+export async function saveMessage(msg: StoredMessage): Promise<void> {
+  if (!msg.content?.trim()) return;
+  await ensureSchema();
+  await sql`
+    INSERT INTO messages (platform, group_id, group_name, sender_id, sender_name, content, timestamp)
+    VALUES (${msg.platform}, ${msg.groupId}, ${msg.groupName ?? null}, ${msg.senderId}, ${msg.senderName}, ${msg.content}, ${msg.timestamp})
+  `;
+}
+
+export async function getMessagesInWindow(
   platform: Platform,
   groupId: string,
   windowStart: number,
   windowEnd: number,
-): StoredMessage[] {
-  return selectStmt.all(platform, groupId, windowStart, windowEnd) as unknown as StoredMessage[];
+): Promise<StoredMessage[]> {
+  await ensureSchema();
+  const rows = await sql<StoredMessage[]>`
+    SELECT id,
+           platform,
+           group_id    AS "groupId",
+           group_name  AS "groupName",
+           sender_id   AS "senderId",
+           sender_name AS "senderName",
+           content,
+           timestamp
+    FROM messages
+    WHERE platform = ${platform}
+      AND group_id = ${groupId}
+      AND timestamp BETWEEN ${windowStart} AND ${windowEnd}
+    ORDER BY timestamp ASC
+  `;
+  return rows.map((r) => ({ ...r, timestamp: Number(r.timestamp) }));
 }
 
-const insertSummary = db.prepare(`
-  INSERT INTO summaries (platform, group_id, window_start, window_end, text, audio_path, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
-`);
-
-export function saveSummary(
+export async function saveSummary(
   platform: Platform,
   groupId: string,
   windowStart: number,
   windowEnd: number,
   text: string,
-  audioPath: string | null,
-): void {
-  insertSummary.run(platform, groupId, windowStart, windowEnd, text, audioPath, Date.now());
+): Promise<void> {
+  await ensureSchema();
+  await sql`
+    INSERT INTO summaries (platform, group_id, window_start, window_end, text, created_at)
+    VALUES (${platform}, ${groupId}, ${windowStart}, ${windowEnd}, ${text}, ${Date.now()})
+  `;
 }

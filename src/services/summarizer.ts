@@ -1,27 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getConfig } from '../config';
-import { onSettingsChange } from '../settings';
 import type { StoredMessage } from '../types';
 
-let client: Anthropic | null = null;
-let currentKey = '';
-
-function getClient(): Anthropic {
-  const cfg = getConfig();
+async function getClient(): Promise<Anthropic> {
+  const cfg = await getConfig();
   if (!cfg.anthropic.apiKey) throw new Error('ANTHROPIC_API_KEY nao configurado');
-  if (!client || cfg.anthropic.apiKey !== currentKey) {
-    client = new Anthropic({ apiKey: cfg.anthropic.apiKey });
-    currentKey = cfg.anthropic.apiKey;
-  }
-  return client;
+  return new Anthropic({ apiKey: cfg.anthropic.apiKey });
 }
-
-onSettingsChange((s) => {
-  if (s.anthropic.apiKey !== currentKey) {
-    client = null;
-    currentKey = '';
-  }
-});
 
 const SYSTEM_PROMPT = `Voce e um assistente que resume conversas de grupos.
 Produza um resumo conciso, em portugues do Brasil, em formato de texto corrido (sem listas, sem markdown), com no maximo 200 palavras.
@@ -41,12 +26,13 @@ function formatMessages(messages: StoredMessage[]): string {
 
 export async function summarize(messages: StoredMessage[]): Promise<string> {
   if (!messages.length) return '';
-  const cfg = getConfig();
+  const cfg = await getConfig();
+  const client = await getClient();
 
   const transcript = formatMessages(messages);
   const userMsg = `Resuma a conversa a seguir do grupo (${messages.length} mensagens):\n\n${transcript}`;
 
-  const resp = await getClient().messages.create({
+  const resp = await client.messages.create({
     model: cfg.anthropic.model,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
