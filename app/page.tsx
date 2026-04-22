@@ -1731,9 +1731,29 @@ function Integracoes({ navigate }: { navigate: (v: View) => void }) {
 
 /* ---------------------------- CONFIGURAÇÕES ---------------------------- */
 
+interface TgGroupCheck {
+  chatId: number;
+  ok: boolean;
+  title?: string;
+  type?: string;
+  memberCount?: number;
+  botStatus?: string;
+  canSendMessages?: boolean;
+  error?: string;
+}
+
+interface TgCheckResult {
+  ok: boolean;
+  bot?: { id: number; username: string; name: string } | null;
+  groups?: TgGroupCheck[];
+  error?: string;
+}
+
 function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) => void }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState('carregando…');
+  const [tgCheck, setTgCheck] = useState<TgCheckResult | null>(null);
+  const [tgChecking, setTgChecking] = useState(false);
 
   const load = useCallback(async () => {
     setStatus('carregando…');
@@ -1797,6 +1817,24 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
     else showToast('Falha: ' + (data.error || r.status), true);
   }
 
+  async function verifyTelegramGroups() {
+    setTgChecking(true);
+    setTgCheck(null);
+    try {
+      const r = await fetch('/api/telegram/groups', { cache: 'no-store' });
+      const data: TgCheckResult = await r.json();
+      setTgCheck(data);
+      if (!r.ok) showToast(data.error || 'falha na verificação', true);
+      else if (data.ok) showToast(`✓ bot @${data.bot?.username} verificado`);
+      else showToast('alguns grupos têm problemas — veja abaixo', true);
+    } catch (err: any) {
+      setTgCheck({ ok: false, error: err?.message ?? 'erro' });
+      showToast('erro: ' + (err?.message ?? 'falha'), true);
+    } finally {
+      setTgChecking(false);
+    }
+  }
+
   return (
     <section>
       <header className="page-h">
@@ -1852,14 +1890,63 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
               </div>
               <div className="field">
                 <label>&nbsp;</label>
-                <button type="button" className="btn btn-g" onClick={setupTelegramWebhook}>
-                  Registrar webhook
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-g" onClick={setupTelegramWebhook}>
+                    Registrar webhook
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-g"
+                    onClick={verifyTelegramGroups}
+                    disabled={tgChecking}
+                  >
+                    {tgChecking ? 'verificando…' : 'Verificar grupos'}
+                  </button>
+                </div>
               </div>
               <div className="field full">
                 <label>Chat IDs (números separados por vírgula)</label>
                 <textarea name="telegram.groups" placeholder="-1001234567890, ..." />
               </div>
+              {tgCheck && (
+                <div className="field full">
+                  <div className="tg-check">
+                    {tgCheck.bot && (
+                      <div className="tg-check-bot">
+                        <b>Bot:</b> @{tgCheck.bot.username} ({tgCheck.bot.name}) · id {tgCheck.bot.id}
+                      </div>
+                    )}
+                    {tgCheck.error && <div className="tg-check-err">{tgCheck.error}</div>}
+                    {(tgCheck.groups ?? []).map((g) => (
+                      <div key={g.chatId} className={`tg-check-row ${g.ok && g.canSendMessages ? 'ok' : 'err'}`}>
+                        <div className="tg-check-icon">{g.ok && g.canSendMessages ? '✓' : '✕'}</div>
+                        <div className="tg-check-body">
+                          <div className="tg-check-title">
+                            <b>{g.title ?? g.chatId}</b>
+                            {g.type && <span className="tg-check-tag">{g.type}</span>}
+                          </div>
+                          <div className="tg-check-meta">
+                            <span>chat_id: {g.chatId}</span>
+                            {g.memberCount != null && <span>· {g.memberCount} membros</span>}
+                            {g.botStatus && (
+                              <span>
+                                · bot:{' '}
+                                <b style={{ color: g.botStatus === 'administrator' ? 'var(--orange)' : 'var(--ink)' }}>
+                                  {g.botStatus}
+                                </b>
+                              </span>
+                            )}
+                          </div>
+                          {g.error && <div className="tg-check-err-detail">{g.error}</div>}
+                        </div>
+                      </div>
+                    ))}
+                    {tgCheck.groups?.length === 0 && (
+                      <div className="tg-check-empty">Nenhum chat ID cadastrado.</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
