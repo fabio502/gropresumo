@@ -94,9 +94,32 @@ export async function loadSettings(): Promise<AppSettings> {
   return deepMerge(defaults(), stored);
 }
 
+const WHATSAPP_GROUP_RE = /^\d+(-\d+)?@g\.us$/i;
+
+export function validateSettings(s: AppSettings): void {
+  for (const g of s.evolution.groups) {
+    if (!WHATSAPP_GROUP_RE.test(g)) {
+      throw new Error(
+        `grupo WhatsApp invalido: "${g}" — formato esperado: 120363xxxxxx@g.us`,
+      );
+    }
+  }
+  for (const g of s.telegram.groups) {
+    if (!Number.isInteger(g)) {
+      throw new Error(
+        `grupo Telegram invalido: "${g}" — chat_id deve ser um numero inteiro (ex: -1001234567890)`,
+      );
+    }
+  }
+  if (s.scheduler.windowHours < 1 || s.scheduler.windowHours > 168) {
+    throw new Error('janela deve estar entre 1 e 168 horas');
+  }
+}
+
 export async function saveSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
   const current = await loadSettings();
   const merged = deepMerge(current, patch);
+  validateSettings(merged);
   await sql`
     INSERT INTO settings (key, value)
     VALUES (${SETTINGS_KEY}, ${sql.json(merged as any)})

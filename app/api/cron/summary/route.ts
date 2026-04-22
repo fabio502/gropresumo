@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runSummaryPipeline } from '@/src/services/pipeline';
 import { loadSettings } from '@/src/settings';
+import { purgeMessagesOlderThan } from '@/src/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -37,5 +38,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, ranAt: new Date().toISOString(), results });
+  const safetyMs = cfg.scheduler.windowHours * 2 * 60 * 60 * 1000;
+  const purged = await purgeMessagesOlderThan(Date.now() - safetyMs);
+
+  return NextResponse.json({ ok: true, ranAt: new Date().toISOString(), purged, results });
 }

@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GrupResumo — Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700;800;900&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --orange:#FC3B00;
+  --orange-2:#FF6129;
+  --orange-3:#FF7145;
+  --ink:#0A0A0A;
+  --ink-2:#1A1A1A;
+  --ink-3:#2A2A2A;
+  --paper:#FFFFFF;
+  --bone:#F5F2EE;
+  --tint:#FFF1EA;
+  --hair:#E8E4DE;
+  --hair-2:#1F1F1F;
+  --mute:#6F6A63;
+  --mute-2:#A09A92;
+  --ok:#0F8A4F;
+  --fi:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,system-ui,sans-serif;
+  --ft:'Inter Tight','Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:var(--fi)}
+html,body{background:var(--paper);color:var(--ink);font-family:var(--fi);font-feature-settings:'ss01','cv11','tnum';-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;font-weight:400;line-height:1.45}
+input,textarea,select,button,kbd{font-family:var(--fi)}
+body{overflow-x:hidden}
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+::selection{background:var(--orange);color:#fff}
+
+/* SIDEBAR */
+.side{background:var(--ink);color:#fff;padding:28px 0 24px;display:flex;flex-direction:column;border-right:1px solid var(--hair-2);position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:12px;padding:0 24px 28px;border-bottom:1px solid var(--hair-2)}
+.brand-mark{width:34px;height:34px;background:var(--orange);position:relative;display:grid;place-items:center}
+.brand-mark::after{content:"";position:absolute;inset:auto -6px -6px auto;width:14px;height:14px;background:var(--ink);}
+.brand-mark span{font-family:var(--ft);font-weight:900;color:#000;font-size:15px;letter-spacing:-.04em;line-height:1;z-index:1}
+.brand-text{display:flex;flex-direction:column;line-height:1}
+.brand-text b{font-family:var(--ft);font-weight:800;font-size:15px;letter-spacing:-.03em}
+.brand-text small{color:var(--mute-2);font-size:10px;letter-spacing:.16em;text-transform:uppercase;margin-top:4px;font-weight:500}
+.nav{padding:24px 14px 14px;flex:1;overflow:auto}
+.nav-label{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute-2);font-weight:600;padding:14px 12px 8px}
+.nav-label:first-child{padding-top:4px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:6px;color:#cdc8c1;cursor:pointer;font-size:13.5px;font-weight:450;letter-spacing:-.005em;transition:all .15s;position:relative}
+.nav-item:hover{color:#fff;background:#161616}
+.nav-item.active{color:#fff;background:var(--orange);font-weight:550}
+.nav-item.active .nav-ico{stroke:#000}
+.nav-item .badge{margin-left:auto;font-size:10px;background:#000;color:var(--orange);padding:2px 7px;border-radius:99px;font-weight:600;letter-spacing:.04em}
+.nav-item.active .badge{background:#000;color:#fff}
+.nav-ico{width:16px;height:16px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7}
+.acct{margin:14px;padding:14px;border:1px solid var(--hair-2);border-radius:10px;display:flex;align-items:center;gap:12px}
+.acct .av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--orange-3),var(--orange));display:grid;place-items:center;font-weight:700;color:#000;font-size:13px;font-family:var(--ft);letter-spacing:-.02em}
+.acct .name{font-size:13px;font-weight:550}
+.acct .role{font-size:10.5px;color:var(--mute-2);letter-spacing:.04em;margin-top:2px}
+.acct .dot{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-left:auto;box-shadow:0 0 0 4px rgba(252,59,0,.18)}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;padding:20px 40px;border-bottom:1px solid var(--hair);background:var(--paper);position:sticky;top:0;z-index:5;backdrop-filter:blur(8px)}
+.crumb{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.crumb .c-key{color:var(--mute);letter-spacing:.04em}
+.crumb .c-sep{color:var(--mute-2);font-weight:300}
+.crumb .c-cur{color:var(--ink);font-weight:600;letter-spacing:-.01em}
+.top-r{display:flex;align-items:center;gap:14px}
+.search{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--hair);border-radius:99px;background:var(--bone);min-width:280px;transition:all .15s}
+.search:focus-within{border-color:var(--ink);background:#fff}
+.search input{border:0;background:transparent;outline:none;font-family:inherit;font-size:13px;color:var(--ink);width:100%}
+.search svg{stroke:var(--mute);fill:none;stroke-width:1.8;width:14px;height:14px}
+.search kbd{font-family:inherit;font-size:10.5px;color:var(--mute);border:1px solid var(--hair);padding:1px 6px;border-radius:4px;background:#fff;font-weight:500}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:99px;font-size:11.5px;letter-spacing:.02em;font-weight:550;background:#fff;border:1px solid var(--hair);color:var(--ink-2)}
+.pill .pdot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(15,138,79,.15)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:var(--orange);color:#fff;border:0;border-radius:99px;font-family:inherit;font-weight:600;font-size:13px;letter-spacing:-.005em;cursor:pointer;transition:transform .15s,background .15s}
+.btn:hover{background:var(--ink);transform:translateY(-1px)}
+.btn-g{background:transparent;color:var(--ink);border:1px solid var(--hair)}
+.btn-g:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* CONTENT */
+.content{padding:36px 40px 60px;max-width:1340px;margin:0 auto;width:100%}
+.view{display:none}
+.view.active{display:block;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* PAGE HEADER */
+.page-h{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:36px;padding-bottom:28px;border-bottom:1px solid var(--hair);gap:32px}
+.page-h h1{font-family:var(--ft);font-weight:800;font-size:64px;letter-spacing:-.045em;line-height:.95;color:var(--ink)}
+.page-h h1 em{font-style:normal;color:var(--orange)}
+.page-h .desc{font-size:14px;color:var(--mute);max-width:340px;text-align:right;line-height:1.55}
+
+.section-mark{display:inline-flex;align-items:center;gap:10px;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--mute);font-weight:600;margin-bottom:18px}
+.section-mark::before{content:"";width:24px;height:1px;background:var(--orange)}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:0;border:1px solid var(--hair);border-radius:14px;overflow:hidden;margin-bottom:32px;background:#fff}
+.stat{padding:28px 26px;border-right:1px solid var(--hair);display:flex;flex-direction:column;justify-content:space-between;min-height:200px;position:relative;overflow:hidden}
+.stat:last-child{border-right:0}
+.stat:first-child{background:var(--ink);color:#fff}
+.stat:first-child .stat-l{color:var(--mute-2)}
+.stat:first-child .stat-d{color:var(--mute-2);border-color:var(--hair-2)}
+.stat:first-child .stat-d b{color:#fff}
+.stat-l{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.stat-v{font-family:var(--ft);font-weight:800;font-size:78px;letter-spacing:-.05em;line-height:.9;margin-top:auto;display:flex;align-items:baseline;gap:6px}
+.stat-v small{font-size:18px;color:var(--mute);font-weight:500;letter-spacing:-.02em}
+.stat-d{margin-top:14px;font-size:11.5px;color:var(--mute);padding-top:12px;border-top:1px solid var(--hair);display:flex;justify-content:space-between}
+.stat-d b{color:var(--ink);font-weight:600}
+.stat-arr{position:absolute;top:24px;right:24px;font-size:12px;color:var(--orange);font-weight:600;display:flex;align-items:center;gap:4px}
+.stat:first-child .stat-arr{color:var(--orange-3)}
+
+/* GRID PRIMARY */
+.grid-2{display:grid;grid-template-columns:1.6fr 1fr;gap:24px;margin-bottom:32px}
+.panel{background:#fff;border:1px solid var(--hair);border-radius:14px;padding:26px}
+.panel-orange{background:var(--orange);color:#fff;border-color:var(--orange)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.panel-h h3{font-family:var(--ft);font-weight:700;font-size:20px;letter-spacing:-.025em}
+.panel-h .toolbar{display:flex;gap:6px}
+.tool-btn{padding:5px 10px;background:var(--bone);border:0;border-radius:99px;font-family:inherit;font-size:11px;color:var(--mute);cursor:pointer;font-weight:550;letter-spacing:.01em;transition:all .15s}
+.tool-btn:hover{background:var(--ink);color:#fff}
+.tool-btn.on{background:var(--ink);color:#fff}
+.panel-orange .tool-btn{background:rgba(0,0,0,.18);color:#fff}
+.panel-orange .tool-btn.on{background:#000;color:var(--orange)}
+
+/* CHART */
+.chart{width:100%;height:240px;display:block}
+.chart-foot{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin-top:14px;padding-top:14px;border-top:1px solid var(--hair)}
+.cf{font-size:10.5px;color:var(--mute);text-align:center;font-weight:550;letter-spacing:.04em;text-transform:uppercase}
+
+/* NEXT RUNS */
+.runs{display:flex;flex-direction:column;gap:14px}
+.run{display:flex;align-items:center;gap:14px;padding:14px;background:rgba(0,0,0,.16);border-radius:10px}
+.run-time{font-family:var(--ft);font-weight:800;font-size:32px;letter-spacing:-.04em;line-height:1;min-width:80px}
+.run-time small{display:block;font-size:9.5px;letter-spacing:.16em;font-weight:600;opacity:.7;margin-top:4px;text-transform:uppercase}
+.run-info{flex:1;min-width:0}
+.run-info b{font-family:var(--ft);font-weight:700;font-size:14.5px;letter-spacing:-.015em;display:block;margin-bottom:3px}
+.run-info span{font-size:11.5px;opacity:.78;font-weight:500}
+.run .pf{padding:3px 8px;background:#000;color:var(--orange);border-radius:99px;font-size:10px;font-weight:600;letter-spacing:.04em}
+
+/* SUMMARIES */
+.sum-list{display:flex;flex-direction:column;gap:0}
+.sum{padding:24px 0;border-bottom:1px solid var(--hair);display:grid;grid-template-columns:60px 1fr auto;gap:24px;align-items:flex-start;cursor:pointer;transition:background .15s}
+.sum:hover{background:var(--bone);margin:0 -16px;padding-left:16px;padding-right:16px}
+.sum:last-child{border-bottom:0}
+.sum-n{font-family:var(--ft);font-weight:800;font-size:34px;letter-spacing:-.04em;color:var(--orange);line-height:.9;padding-top:2px}
+.sum-body{min-width:0}
+.sum-meta{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mute);margin-bottom:8px;letter-spacing:.04em;font-weight:550;text-transform:uppercase;flex-wrap:wrap}
+.sum-meta .pf{padding:2px 8px;border:1px solid var(--hair);border-radius:99px;font-size:10px;letter-spacing:.06em}
+.sum-meta .pf.wpp{color:var(--orange);border-color:var(--orange)}
+.sum-meta .pf.tg{color:var(--ink);border-color:var(--ink)}
+.sum h4{font-family:var(--ft);font-weight:700;font-size:18px;letter-spacing:-.02em;margin-bottom:6px;line-height:1.3}
+.sum p{font-size:13.5px;color:var(--mute);line-height:1.55;max-width:560px}
+.sum-act{display:flex;align-items:center;gap:8px}
+.sum-act .ico-btn{width:36px;height:36px;border-radius:50%;background:var(--bone);border:0;display:grid;place-items:center;cursor:pointer;transition:all .15s;color:var(--ink)}
+.sum-act .ico-btn:hover{background:var(--ink);color:#fff}
+.sum-act .ico-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.sum-act .ico-btn.play{background:var(--orange);color:#fff}
+.sum-act .ico-btn.play:hover{background:var(--ink)}
+
+/* AUDIO PLAYER */
+.audio{display:flex;align-items:center;gap:14px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:99px;margin-top:16px;max-width:520px}
+.audio .ply{width:38px;height:38px;border-radius:50%;background:var(--orange);border:0;display:grid;place-items:center;cursor:pointer;flex-shrink:0;color:#fff}
+.audio .ply svg{width:13px;height:13px;fill:#fff}
+.wave{flex:1;display:flex;align-items:center;gap:2.5px;height:34px;cursor:pointer}
+.wave .b{width:2.5px;background:#3a3a3a;border-radius:2px;transition:background .15s}
+.wave .b.on{background:var(--orange)}
+.tcode{font-family:var(--fi);font-feature-settings:'tnum';font-size:11.5px;color:var(--mute-2);font-weight:500;letter-spacing:-.02em;flex-shrink:0}
+
+/* STATUS PANEL */
+.statuses{display:flex;flex-direction:column;gap:0}
+.svc{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--hair)}
+.svc:last-child{border-bottom:0;padding-bottom:0}
+.svc:first-child{padding-top:0}
+.svc-l{display:flex;align-items:center;gap:12px}
+.svc-i{width:30px;height:30px;border-radius:8px;background:var(--bone);display:grid;place-items:center;font-weight:700;font-size:11px;letter-spacing:-.02em;font-family:var(--ft)}
+.svc b{font-size:13.5px;font-weight:600;letter-spacing:-.005em}
+.svc small{display:block;font-size:11px;color:var(--mute);font-weight:500;margin-top:1px}
+.svc-r{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mute);font-weight:550}
+.svc-r .pdot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(15,138,79,.15)}
+.svc-r .pdot.warn{background:var(--orange);box-shadow:0 0 0 3px rgba(252,59,0,.15)}
+
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+
+/* MENSAGENS */
+.feed{display:flex;flex-direction:column;gap:0}
+.msg{display:grid;grid-template-columns:auto 1fr auto;gap:14px;padding:18px 0;border-bottom:1px dashed var(--hair);align-items:flex-start}
+.msg .av{width:38px;height:38px;border-radius:50%;background:var(--bone);display:grid;place-items:center;font-weight:600;font-size:13px;color:var(--ink);font-family:var(--ft);letter-spacing:-.02em}
+.msg.wpp .av{background:#FFE9DD;color:var(--orange)}
+.msg.tg .av{background:var(--ink);color:#fff}
+.msg-b .head{display:flex;align-items:baseline;gap:10px;margin-bottom:5px;flex-wrap:wrap}
+.msg-b .head b{font-size:13.5px;font-weight:600}
+.msg-b .head .grp{font-size:11px;color:var(--mute);font-weight:500}
+.msg-b p{font-size:13.5px;color:var(--ink-2);line-height:1.5;max-width:680px}
+.msg-t{font-size:11px;color:var(--mute-2);font-weight:500;font-feature-settings:'tnum'}
+
+/* GROUPS */
+.gcard{padding:24px;border:1px solid var(--hair);border-radius:14px;background:#fff;display:flex;flex-direction:column;gap:16px;transition:all .2s;cursor:pointer}
+.gcard:hover{border-color:var(--ink);transform:translateY(-3px);box-shadow:0 12px 40px -20px rgba(0,0,0,.2)}
+.gcard .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.gcard h4{font-family:var(--ft);font-weight:700;font-size:17px;letter-spacing:-.02em;line-height:1.25}
+.gcard .head .pf{font-size:9.5px;padding:2px 7px;border-radius:99px;letter-spacing:.06em;font-weight:600;text-transform:uppercase}
+.gcard .pf.wpp{background:var(--orange);color:#fff}
+.gcard .pf.tg{background:var(--ink);color:#fff}
+.gcard .id{font-family:var(--fi);font-feature-settings:'tnum';font-size:11px;color:var(--mute);letter-spacing:-.01em;background:var(--bone);padding:5px 10px;border-radius:6px;display:inline-block;width:fit-content;font-weight:500}
+.gcard .nums{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--hair);padding-top:16px;margin-top:auto}
+.gcard .nums div{display:flex;flex-direction:column;gap:2px}
+.gcard .nums div + div{border-left:1px solid var(--hair);padding-left:14px}
+.gcard .nums b{font-family:var(--ft);font-weight:700;font-size:22px;letter-spacing:-.03em;line-height:1}
+.gcard .nums small{font-size:10px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.gcard .spark{height:38px;width:100%}
+.gcard .toggle{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mute);margin-top:4px;font-weight:500}
+.tg-sw{width:34px;height:18px;background:var(--hair);border-radius:99px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.tg-sw::after{content:"";position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .2s}
+.tg-sw.on{background:var(--orange)}
+.tg-sw.on::after{left:18px}
+
+/* INTEGRACOES */
+.icard{padding:28px;border:1px solid var(--hair);border-radius:14px;background:#fff;display:flex;flex-direction:column;gap:14px}
+.icard .head{display:flex;align-items:center;justify-content:space-between}
+.icard .logo{width:46px;height:46px;border-radius:12px;background:var(--ink);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px;font-family:var(--ft);letter-spacing:-.04em}
+.icard.wpp .logo{background:var(--orange)}
+.icard.ai .logo{background:var(--orange-2);color:#000}
+.icard.db .logo{background:var(--orange-3);color:#000}
+.icard.cron .logo{background:var(--bone);color:var(--ink);border:1px solid var(--hair)}
+.icard h4{font-family:var(--ft);font-weight:700;font-size:17px;letter-spacing:-.02em}
+.icard p{font-size:12.5px;color:var(--mute);line-height:1.5}
+.icard .row{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid var(--hair);font-size:11.5px;color:var(--mute);font-weight:500}
+.icard .row b{color:var(--ink);font-weight:600}
+
+/* CONFIG FORM */
+.form-grid{display:grid;grid-template-columns:280px 1fr;gap:32px;align-items:flex-start;padding:28px 0;border-bottom:1px solid var(--hair)}
+.form-grid:last-child{border-bottom:0}
+.form-grid .lbl h4{font-family:var(--ft);font-weight:700;font-size:18px;letter-spacing:-.02em;margin-bottom:6px}
+.form-grid .lbl p{font-size:12.5px;color:var(--mute);line-height:1.5}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.field label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.field input,.field textarea,.field select{font-family:inherit;font-size:13px;padding:11px 14px;border:1px solid var(--hair);background:#fff;border-radius:8px;color:var(--ink);font-weight:450;transition:border .15s}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--orange)}
+.field textarea{resize:vertical;min-height:78px;font-family:var(--fi);font-feature-settings:'tnum';font-size:12px;line-height:1.55}
+
+/* LOGS */
+.logs{display:flex;flex-direction:column;border-top:1px solid var(--hair);margin-top:6px;max-height:540px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-feature-settings:'tnum';font-size:12.5px}
+.logs .l{display:grid;grid-template-columns:90px 60px 170px 1fr;gap:12px;padding:8px 0;border-bottom:1px dashed var(--hair);align-items:baseline;line-height:1.55}
+.logs .l:last-child{border-bottom:0}
+.logs .l .t{color:var(--mute-2);font-weight:500}
+.logs .l .lvl{font-weight:700;letter-spacing:.1em;font-size:10px;text-transform:uppercase}
+.logs .l .lvl.ok{color:var(--ok)}
+.logs .l .lvl.info{color:var(--ok)}
+.logs .l .lvl.err{color:var(--err)}
+.logs .l .src{color:var(--ink);font-weight:600;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logs .l .m{color:var(--ink-2);word-break:break-word}
+
+/* CHIPS */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.chip{padding:7px 14px;background:#fff;border:1px solid var(--hair);border-radius:99px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500;color:var(--ink-2);transition:all .15s}
+.chip:hover{border-color:var(--ink)}
+.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* TOAST */
+.toast{position:fixed;bottom:32px;right:32px;background:var(--ink);color:#fff;padding:14px 22px;border-radius:99px;font-size:13px;font-weight:500;letter-spacing:-.005em;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none;display:flex;align-items:center;gap:10px;z-index:99}
+.toast::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--orange)}
+.toast.show{opacity:1;transform:none}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(10,10,10,.55);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:200;opacity:0;transition:opacity .2s}
+.modal-bg.show{display:flex;opacity:1}
+.modal{background:#fff;border-radius:18px;width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 64px);overflow:auto;transform:translateY(12px) scale(.98);transition:transform .25s cubic-bezier(.2,.9,.3,1.1);box-shadow:0 40px 80px -20px rgba(0,0,0,.4)}
+.modal-bg.show .modal{transform:none}
+.modal-h{padding:28px 32px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.modal-h h2{font-family:var(--ft);font-weight:800;font-size:32px;letter-spacing:-.035em;line-height:1}
+.modal-h h2 em{font-style:normal;color:var(--orange)}
+.modal-h .close{width:32px;height:32px;border-radius:50%;background:var(--bone);border:0;cursor:pointer;display:grid;place-items:center;color:var(--ink);transition:all .15s;flex-shrink:0}
+.modal-h .close:hover{background:var(--ink);color:#fff}
+.modal-h .close svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+.modal-sub{padding:8px 32px 0;font-size:13px;color:var(--mute);line-height:1.55}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:24px 32px 0;padding:5px;background:var(--bone);border-radius:12px}
+.seg button{padding:14px;border:0;background:transparent;font-family:inherit;font-weight:600;font-size:13.5px;color:var(--mute);border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:4px;transition:all .15s;text-align:left}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.seg button.on[data-pf="wpp"]{background:var(--orange);color:#fff}
+.seg button.on[data-pf="tg"]{background:var(--ink);color:#fff}
+.seg button small{font-size:10.5px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
+.modal-body{padding:24px 32px}
+.modal-body .field{margin-bottom:16px}
+.modal-body .field:last-child{margin-bottom:0}
+.modal-body .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.help{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--tint);border-radius:10px;font-size:12px;color:var(--ink-2);line-height:1.5;margin-top:6px}
+.help svg{width:14px;height:14px;flex-shrink:0;margin-top:2px;stroke:var(--orange);fill:none;stroke-width:2}
+.field input.invalid{border-color:var(--orange);background:#FFF6F2}
+.err{display:none;align-items:center;gap:6px;font-size:11.5px;color:var(--orange);font-weight:550;margin-top:6px;letter-spacing:-.005em}
+.err.show{display:flex}
+.err::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--orange)}
+.modal-foot{padding:18px 32px 28px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;align-items:center;gap:12px;background:#fff;position:sticky;bottom:0}
+.modal-foot .left{font-size:11.5px;color:var(--mute);font-weight:500}
+.modal-foot .right{display:flex;gap:10px}
+
+/* GRUPO ADD CARD */
+.gcard.add{border:1.5px dashed var(--hair);background:transparent;align-items:center;justify-content:center;text-align:center;min-height:280px;color:var(--mute);transition:all .2s}
+.gcard.add:hover{border-color:var(--orange);background:var(--tint);color:var(--orange);transform:none;box-shadow:none}
+.gcard.add .plus{width:54px;height:54px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:22px;font-weight:300;font-family:var(--ft);transition:all .2s}
+.gcard.add:hover .plus{background:var(--orange);transform:rotate(90deg)}
+.gcard.add b{font-family:var(--ft);font-weight:700;font-size:16px;letter-spacing:-.02em;color:var(--ink)}
+.gcard.add:hover b{color:var(--orange)}
+.gcard.add p{font-size:12px;color:var(--mute);line-height:1.5;max-width:200px}
+
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--hair);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--mute-2)}
+.nav::-webkit-scrollbar-thumb{background:#1f1f1f}
+
+@media (max-width:980px){.app{grid-template-columns:1fr}.side{display:none}.stats{grid-template-columns:1fr 1fr}.grid-2,.grid-3,.form-grid{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.page-h{flex-direction:column;align-items:flex-start}.page-h .desc{text-align:left}.page-h h1{font-size:42px}.stat-v{font-size:54px}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark"><span>G</span></div>
+      <div class="brand-text"><b>GrupResumo</b><small>v 1.0 · Console</small></div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Operação</div>
+      <div class="nav-item active" data-view="painel">
+        <svg class="nav-ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Painel
+      </div>
+      <div class="nav-item" data-view="resumos">
+        <svg class="nav-ico" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Resumos<span class="badge">12</span>
+      </div>
+      <div class="nav-item" data-view="grupos">
+        <svg class="nav-ico" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Grupos
+      </div>
+
+      <div class="nav-label">Sistema</div>
+      <div class="nav-item" data-view="integracoes">
+        <svg class="nav-ico" viewBox="0 0 24 24"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+        Integrações
+      </div>
+      <div class="nav-item" data-view="config">
+        <svg class="nav-ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Configurações
+      </div>
+      <div class="nav-item" data-view="logs">
+        <svg class="nav-ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+        Logs
+      </div>
+    </nav>
+    <div class="acct">
+      <div class="av">FA</div>
+      <div>
+        <div class="name">Fábio A.</div>
+        <div class="role">workspace · admin</div>
+      </div>
+      <div class="dot"></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="top">
+      <div class="crumb">
+        <span class="c-key">Workspace</span>
+        <span class="c-sep">/</span>
+        <span class="c-cur" id="crumb-cur">Painel</span>
+      </div>
+      <div class="top-r">
+        <div class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input placeholder="buscar grupo, mensagem ou resumo…" />
+          <kbd>⌘K</kbd>
+        </div>
+        <div class="pill"><span class="pdot"></span>ao vivo</div>
+        <button class="btn" onclick="toast('Pipeline iniciada')">
+          <svg width="13" height="13" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg>
+          Rodar agora
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- PAINEL -->
+      <section class="view active" id="view-painel">
+        <header class="page-h">
+          <div>
+            <div class="section-mark">Visão geral · 19 abr 2026</div>
+            <h1>Bom dia,<br/><em>Fábio.</em></h1>
+          </div>
+          <p class="desc">12 grupos ativos rodando esta semana. Próximo resumo automático em <b style="color:var(--ink)">3h 18m</b>.</p>
+        </header>
+
+        <div class="stats">
+          <div class="stat">
+            <div>
+              <div class="stat-l">Mensagens · 24h</div>
+              <div class="stat-arr">+18% ↗</div>
+            </div>
+            <div>
+              <div class="stat-v">1.247</div>
+              <div class="stat-d"><span>vs ontem</span><b>+192</b></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div>
+              <div class="stat-l">Grupos ativos</div>
+              <div class="stat-arr">+2 ↗</div>
+            </div>
+            <div>
+              <div class="stat-v">12</div>
+              <div class="stat-d"><span>capacidade</span><b>48</b></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div>
+              <div class="stat-l">Resumos enviados</div>
+              <div class="stat-arr">+9 ↗</div>
+            </div>
+            <div>
+              <div class="stat-v">286</div>
+              <div class="stat-d"><span>este mês</span><b>abr</b></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div>
+              <div class="stat-l">Tempo de áudio</div>
+              <div class="stat-arr">−6% ↘</div>
+            </div>
+            <div>
+              <div class="stat-v">4<small>h</small> 12<small>m</small></div>
+              <div class="stat-d"><span>média/resumo</span><b>1m 02s</b></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-h">
+              <h3>Atividade dos últimos 7 dias</h3>
+              <div class="toolbar">
+                <button class="tool-btn">Mensagens</button>
+                <button class="tool-btn on">Resumos</button>
+                <button class="tool-btn">Áudio</button>
+              </div>
+            </div>
+            <svg class="chart" viewBox="0 0 720 240" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="ar" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#FC3B00" stop-opacity=".25"/>
+                  <stop offset="100%" stop-color="#FC3B00" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <g stroke="#E8E4DE" stroke-dasharray="3 4">
+                <line x1="0" y1="60" x2="720" y2="60"/>
+                <line x1="0" y1="120" x2="720" y2="120"/>
+                <line x1="0" y1="180" x2="720" y2="180"/>
+              </g>
+              <path d="M0,170 L120,140 L240,160 L360,90 L480,110 L600,55 L720,80 L720,240 L0,240 Z" fill="url(#ar)"/>
+              <path d="M0,170 L120,140 L240,160 L360,90 L480,110 L600,55 L720,80" fill="none" stroke="#FC3B00" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+              <g fill="#FC3B00">
+                <circle cx="0" cy="170" r="3.5"/><circle cx="120" cy="140" r="3.5"/>
+                <circle cx="240" cy="160" r="3.5"/><circle cx="360" cy="90" r="3.5"/>
+                <circle cx="480" cy="110" r="3.5"/><circle cx="600" cy="55" r="5" stroke="#fff" stroke-width="2.5"/>
+                <circle cx="720" cy="80" r="3.5"/>
+              </g>
+              <text x="600" y="38" font-family="Inter Tight" font-weight="700" font-size="13" fill="#0A0A0A" text-anchor="middle">428</text>
+            </svg>
+            <div class="chart-foot">
+              <div class="cf">Sáb</div><div class="cf">Dom</div><div class="cf">Seg</div><div class="cf">Ter</div><div class="cf">Qua</div><div class="cf" style="color:var(--orange)">Qui</div><div class="cf">Sex</div>
+            </div>
+          </div>
+
+          <div class="panel panel-orange">
+            <div class="panel-h">
+              <h3>Próximos resumos</h3>
+              <div class="toolbar"><button class="tool-btn on">Hoje</button></div>
+            </div>
+            <div class="runs">
+              <div class="run">
+                <div class="run-time">20:00<small>BRT</small></div>
+                <div class="run-info"><b>Devs Brasil</b><span>cron · 24h · ≈ 380 mensagens</span></div>
+                <span class="pf">WPP</span>
+              </div>
+              <div class="run">
+                <div class="run-time">20:00<small>BRT</small></div>
+                <div class="run-info"><b>AI Builders BR</b><span>cron · 24h · ≈ 210 mensagens</span></div>
+                <span class="pf">TG</span>
+              </div>
+              <div class="run">
+                <div class="run-time">22:30<small>BRT</small></div>
+                <div class="run-info"><b>Trade Cripto BR</b><span>manual · 12h · ≈ 90 mensagens</span></div>
+                <span class="pf">WPP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-h">
+              <h3>Resumos recentes</h3>
+              <button class="tool-btn" onclick="show('resumos')">Ver todos →</button>
+            </div>
+            <div class="sum-list">
+              <div class="sum">
+                <div class="sum-n">01</div>
+                <div class="sum-body">
+                  <div class="sum-meta"><span class="pf wpp">WPP</span><span>Devs Brasil</span><span>·</span><span>18 abr · 20h</span><span>·</span><span>312 msgs</span></div>
+                  <h4>Discussão sobre migração de monorepo Turborepo para Nx esquentou</h4>
+                  <p>Time debateu cache distribuído e build remoto. Maior parte dos devs opinou contra a troca neste momento — apontaram custo de migração e maturidade atual do Turbo. Ricardo abriu RFC para discussão.</p>
+                </div>
+                <div class="sum-act">
+                  <button class="ico-btn play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></button>
+                  <button class="ico-btn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
+                </div>
+              </div>
+              <div class="sum">
+                <div class="sum-n">02</div>
+                <div class="sum-body">
+                  <div class="sum-meta"><span class="pf tg">TG</span><span>AI Builders BR</span><span>·</span><span>18 abr · 20h</span><span>·</span><span>198 msgs</span></div>
+                  <h4>Lançamento do Claude Opus 4.7 dominou a conversa do dia</h4>
+                  <p>Pessoal comentou benchmarks de coding e custo. Vários compartilharam testes próprios. Houve consenso de que a janela de contexto e a velocidade são os ganhos mais notáveis sobre a versão anterior.</p>
+                </div>
+                <div class="sum-act">
+                  <button class="ico-btn play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></button>
+                  <button class="ico-btn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
+                </div>
+              </div>
+              <div class="sum">
+                <div class="sum-n">03</div>
+                <div class="sum-body">
+                  <div class="sum-meta"><span class="pf wpp">WPP</span><span>Trade Cripto BR</span><span>·</span><span>18 abr · 12h</span><span>·</span><span>87 msgs</span></div>
+                  <h4>BTC voltou aos 92k e abriu debate sobre alocação em alts</h4>
+                  <p>Maioria do grupo zerou alts entre janeiro e março. Alguns argumentam que ETH segue subvalorizado dada a narrativa de ETF. Recomendações de cautela com memecoins predominaram.</p>
+                </div>
+                <div class="sum-act">
+                  <button class="ico-btn play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></button>
+                  <button class="ico-btn"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-h">
+              <h3>Status dos serviços</h3>
+              <span class="pill"><span class="pdot"></span>operacional</span>
+            </div>
+            <div class="statuses">
+              <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--orange);color:#fff">EV</div><div><b>Evolution API</b><small>conectado · v 2.1.4</small></div></div><div class="svc-r"><span class="pdot"></span>96 ms</div></div>
+              <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--ink);color:#fff">TG</div><div><b>Telegram Bot</b><small>webhook ativo</small></div></div><div class="svc-r"><span class="pdot"></span>122 ms</div></div>
+              <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--orange-2);color:#000">AI</div><div><b>Anthropic Claude</b><small>opus-4-7 · estável</small></div></div><div class="svc-r"><span class="pdot"></span>1.2 s</div></div>
+              <div class="svc"><div class="svc-l"><div class="svc-i" style="background:#000;color:#fff">EL</div><div><b>ElevenLabs TTS</b><small>cota: 78% restante</small></div></div><div class="svc-r"><span class="pdot warn"></span>aviso</div></div>
+              <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--orange-3);color:#000">PG</div><div><b>Postgres (Neon)</b><small>2 conexões abertas</small></div></div><div class="svc-r"><span class="pdot"></span>14 ms</div></div>
+              <div class="svc"><div class="svc-l"><div class="svc-i">CR</div><div><b>Vercel Cron</b><small>0 23 * * * · UTC</small></div></div><div class="svc-r"><span class="pdot"></span>ok</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESUMOS -->
+      <section class="view" id="view-resumos">
+        <header class="page-h">
+          <div>
+            <div class="section-mark">Histórico</div>
+            <h1>Resumos<br/><em>publicados.</em></h1>
+          </div>
+          <p class="desc">286 resumos enviados em abril. Filtre por plataforma ou grupo para ouvir o áudio gerado.</p>
+        </header>
+
+        <div class="chips">
+          <div class="chip on">Todos · 286</div>
+          <div class="chip">WhatsApp · 184</div>
+          <div class="chip">Telegram · 102</div>
+          <div class="chip">Esta semana</div>
+          <div class="chip">Devs Brasil</div>
+          <div class="chip">AI Builders BR</div>
+        </div>
+
+        <div class="panel">
+          <div class="sum-list">
+            <div class="sum">
+              <div class="sum-n">12</div>
+              <div class="sum-body">
+                <div class="sum-meta"><span class="pf wpp">WPP</span><span>Devs Brasil</span><span>·</span><span>hoje · 11h</span><span>·</span><span>156 msgs</span><span>·</span><span>1m 18s</span></div>
+                <h4>Onda de issues no Next 15.4 sobre cache de Server Actions</h4>
+                <p>Vários relatos de mutations não invalidando cache em produção após o último patch. Workaround temporário compartilhado: forçar revalidatePath no end of action. Time da Vercel já respondeu na issue.</p>
+                <div class="audio">
+                  <button class="ply" onclick="togglePlay(this)"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>
+                  <div class="wave" id="w1"></div>
+                  <span class="tcode">00:24 · 01:18</span>
+                </div>
+              </div>
+              <div class="sum-act">
+                <button class="ico-btn"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+                <button class="ico-btn"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+              </div>
+            </div>
+            <div class="sum">
+              <div class="sum-n">11</div>
+              <div class="sum-body">
+                <div class="sum-meta"><span class="pf tg">TG</span><span>AI Builders BR</span><span>·</span><span>hoje · 09h</span><span>·</span><span>89 msgs</span><span>·</span><span>0m 54s</span></div>
+                <h4>Demo da Anthropic com agentes assíncronos viralizou</h4>
+                <p>Lucas postou clipe de agente fazendo refactor de monorepo enquanto dormia. Discussão sobre custo por hora de execução e como medir produtividade. Saulo defendeu uso só pra tarefas batch overnight.</p>
+              </div>
+              <div class="sum-act">
+                <button class="ico-btn play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></button>
+                <button class="ico-btn"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+              </div>
+            </div>
+            <div class="sum">
+              <div class="sum-n">10</div>
+              <div class="sum-body">
+                <div class="sum-meta"><span class="pf wpp">WPP</span><span>Família Silva</span><span>·</span><span>ontem · 22h</span><span>·</span><span>43 msgs</span><span>·</span><span>0m 38s</span></div>
+                <h4>Almoço de domingo confirmado na casa da Vó Olga</h4>
+                <p>Tia Marisa traz a sobremesa, primo Léo cuida da carne, todos chegam às 12h. Rafael avisou que vem com a namorada nova. Vó pediu pra alguém comprar refrigerante a caminho.</p>
+              </div>
+              <div class="sum-act">
+                <button class="ico-btn play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></button>
+                <button class="ico-btn"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+              </div>
+            </div>
+            <div class="sum">
+              <div class="sum-n">09</div>
+              <div class="sum-body">
+                <div class="sum-meta"><span class="pf wpp">WPP</span><span>Marketing Q2</span><span>·</span><span>ontem · 18h</span><span>·</span><span>121 msgs</span><span>·</span><span>1m 04s</span></div>
+                <h4>Briefing da campanha de inverno aprovado pela Camila</h4>
+                <p>Direção criativa fechou em três peças: vídeo institucional 30s, carrossel para Instagram e landing dedicada. Prazo de entrega ajustado para 02/maio. Orçamento aumentado em 18%.</p>
+              </div>
+              <div class="sum-act">
+                <button class="ico-btn play"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/></svg></button>
+                <button class="ico-btn"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GRUPOS -->
+      <section class="view" id="view-grupos">
+        <header class="page-h">
+          <div>
+            <div class="section-mark"><span id="grupos-count">12 ativos · 4 pausados</span></div>
+            <h1>Grupos<br/><em>monitorados.</em></h1>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px">
+            <p class="desc">Ative ou pause o resumo automático para cada grupo. Cards mostram média de mensagens dos últimos 7 dias.</p>
+            <button class="btn" onclick="openModal()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              Cadastrar grupo
+            </button>
+          </div>
+        </header>
+
+        <div class="grid-3" id="grupos-grid"></div>
+      </section>
+
+      <!-- INTEGRACOES -->
+      <section class="view" id="view-integracoes">
+        <header class="page-h">
+          <div>
+            <div class="section-mark">6 serviços conectados</div>
+            <h1>Integrações<br/><em>e provedores.</em></h1>
+          </div>
+          <p class="desc">Status, latência e versão de cada serviço externo conectado ao GrupResumo.</p>
+        </header>
+
+        <div class="grid-3">
+          <div class="icard wpp"><div class="head"><div class="logo">EV</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Evolution API</h4><p>Captura de mensagens do WhatsApp via webhook MESSAGES_UPSERT.</p><div class="row"><span>v 2.1.4</span><b>96 ms</b></div></div>
+          <div class="icard"><div class="head"><div class="logo">TG</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Telegram Bot</h4><p>Recebe updates por webhook configurado em produção.</p><div class="row"><span>@grupresumo_bot</span><b>122 ms</b></div></div>
+          <div class="icard ai"><div class="head"><div class="logo">AI</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Anthropic Claude</h4><p>Geração de resumo em PT-BR. Modelo: claude-opus-4-7.</p><div class="row"><span>opus 4.7</span><b>1.2 s</b></div></div>
+          <div class="icard"><div class="head"><div class="logo">EL</div><span class="pill"><span class="pdot warn"></span>cota baixa</span></div><h4>ElevenLabs TTS</h4><p>Conversão para áudio. Voz: Bella · multilingual v2.</p><div class="row"><span>78% restante</span><b>2.8 s</b></div></div>
+          <div class="icard db"><div class="head"><div class="logo">PG</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Postgres · Neon</h4><p>Mensagens, resumos e settings. Pool serverless.</p><div class="row"><span>2 conexões</span><b>14 ms</b></div></div>
+          <div class="icard cron"><div class="head"><div class="logo">CR</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Vercel Cron</h4><p>Disparo diário de pipelines. Configurado em vercel.json.</p><div class="row"><span>0 23 * * *</span><b>UTC</b></div></div>
+        </div>
+      </section>
+
+      <!-- CONFIG -->
+      <section class="view" id="view-config">
+        <header class="page-h">
+          <div>
+            <div class="section-mark">Workspace · Fábio A.</div>
+            <h1>Configurações<br/><em>do sistema.</em></h1>
+          </div>
+          <p class="desc">Credenciais salvas em Postgres com mascaramento. Campos vazios mantêm o valor atual.</p>
+        </header>
+
+        <div class="panel">
+          <div class="form-grid">
+            <div class="lbl"><h4>WhatsApp</h4><p>Conexão com Evolution API e seleção dos grupos a monitorar.</p></div>
+            <div class="fields">
+              <div class="field"><label>URL da Evolution</label><input value="https://evolution.example.com" /></div>
+              <div class="field"><label>Instância</label><input value="grupresumo-prod" /></div>
+              <div class="field"><label>API Key</label><input type="password" placeholder="••••••••" /></div>
+              <div class="field"><label>Eventos</label><select><option>MESSAGES_UPSERT</option></select></div>
+              <div class="field full"><label>IDs dos grupos</label><textarea>1203630xxxxx@g.us, 1203630yyyyy@g.us, 1203630zzzzz@g.us</textarea></div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="lbl"><h4>Telegram</h4><p>Bot do Telegram conectado por webhook. Use o botão abaixo para registrar.</p></div>
+            <div class="fields">
+              <div class="field"><label>Bot Token</label><input type="password" placeholder="••••••••" /></div>
+              <div class="field"><label>Webhook URL</label><input value="https://grupresumo.vercel.app/api/telegram" /></div>
+              <div class="field full"><label>Chat IDs</label><textarea>-1001234567890, -1009876543210</textarea></div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="lbl"><h4>IA · Resumo</h4><p>Modelo Claude usado para gerar o resumo em texto fluido em PT-BR.</p></div>
+            <div class="fields">
+              <div class="field"><label>API Key</label><input type="password" placeholder="••••••••" /></div>
+              <div class="field"><label>Modelo</label><input value="claude-opus-4-7" /></div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="lbl"><h4>TTS · Áudio</h4><p>Configuração da voz e modelo do ElevenLabs.</p></div>
+            <div class="fields">
+              <div class="field"><label>API Key</label><input type="password" placeholder="••••••••" /></div>
+              <div class="field"><label>Voice ID</label><input value="EXAVITQu4vr4xnSDxMaL" /></div>
+              <div class="field"><label>Modelo</label><input value="eleven_multilingual_v2" /></div>
+              <div class="field"><label>Janela (h)</label><input value="24" type="number" /></div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="lbl"><h4>Agendamento</h4><p>Cron configurado em vercel.json · padrão: 23h UTC = 20h BRT.</p></div>
+            <div class="fields">
+              <div class="field"><label>Schedule (cron)</label><input value="0 23 * * *" /></div>
+              <div class="field"><label>Timezone</label><select><option>America/Sao_Paulo</option><option>UTC</option></select></div>
+              <div class="field full" style="display:flex;gap:10px;justify-content:flex-end;align-items:flex-end">
+                <button class="btn btn-g" onclick="toast('Recarregado')">Recarregar</button>
+                <button class="btn" onclick="toast('Configurações salvas')">Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGS -->
+      <section class="view" id="view-logs">
+        <header class="page-h">
+          <div>
+            <div class="section-mark">Stream técnico · agregado ao vivo</div>
+            <h1>Logs<br/><em>do pipeline.</em></h1>
+          </div>
+          <p class="desc">Feed agregado de mensagens, resumos, cron e diagnósticos. Atualiza a cada 20s.</p>
+        </header>
+        <div class="panel">
+          <div class="panel-h">
+            <h3>12 entrada(s)</h3>
+            <div class="toolbar">
+              <button class="tool-btn on">Todos</button>
+              <button class="tool-btn">Info</button>
+              <button class="tool-btn">Aviso</button>
+              <button class="tool-btn">Erro</button>
+              <button class="tool-btn" title="Recarregar">↻</button>
+              <button class="tool-btn">Copiar</button>
+            </div>
+          </div>
+          <div class="logs">
+            <div class="l"><span class="t">11:42:18</span><span class="lvl info">INFO</span><span class="src">msg/whatsapp</span><span class="m">Ricardo Costa @ Devs Brasil · bom dia galera, alguém vai pra conf hoje?</span></div>
+            <div class="l"><span class="t">11:42:18</span><span class="lvl ok">OK</span><span class="src">service/database</span><span class="m">ok · conectado</span></div>
+            <div class="l"><span class="t">11:38:04</span><span class="lvl info">INFO</span><span class="src">msg/telegram</span><span class="m">Lucas Mendonça @ AI Builders BR · testando essa API nova da anthropic</span></div>
+            <div class="l"><span class="t">11:00:08</span><span class="lvl ok">OK</span><span class="src">summary/whatsapp</span><span class="m">resumo#42 · Devs Brasil · 156 msgs · 78s áudio</span></div>
+            <div class="l"><span class="t">11:00:11</span><span class="lvl ok">OK</span><span class="src">service/elevenlabs</span><span class="m">ok · user=xi_a voice=EXAVITQu4vr4xnSDxMaL</span></div>
+            <div class="l"><span class="t">10:58:24</span><span class="lvl info">INFO</span><span class="src">schedule/whatsapp</span><span class="m">próximo: Cozinha da Vó · janela 24h</span></div>
+            <div class="l"><span class="t">10:42:11</span><span class="lvl err">WARN</span><span class="src">service/elevenlabs</span><span class="m">remaining quota fell below 80% (78.4%)</span></div>
+            <div class="l"><span class="t">10:42:01</span><span class="lvl ok">OK</span><span class="src">health</span><span class="m">healthcheck · db ok · 31ms</span></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast">Mensagem</div>
+
+<!-- MODAL CADASTRAR GRUPO -->
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-h">
+      <div>
+        <div class="section-mark" style="margin-bottom:10px">Novo monitoramento</div>
+        <h2>Cadastrar<br/><em>grupo.</em></h2>
+      </div>
+      <button class="close" onclick="closeModal()">
+        <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p class="modal-sub">Escolha a plataforma, informe o ID do grupo e configure a janela de resumo.</p>
+
+    <div class="seg" id="seg-pf">
+      <button type="button" class="on" data-pf="wpp" onclick="pickPf(this)">WhatsApp<small>via Evolution API</small></button>
+      <button type="button" data-pf="tg" onclick="pickPf(this)">Telegram<small>via Bot Webhook</small></button>
+    </div>
+
+    <div class="modal-body">
+      <div class="field">
+        <label>Apelido do grupo</label>
+        <input id="g-name" placeholder="ex: Devs Brasil" />
+      </div>
+      <div class="field">
+        <label id="g-id-label">ID do grupo (WhatsApp)</label>
+        <input id="g-id" placeholder="1203630xxxxx@g.us" oninput="validateId()" />
+        <div class="err" id="g-err"><span id="g-err-text"></span></div>
+        <div class="help" id="g-help">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span id="g-help-text">No WhatsApp, abra o grupo na Evolution API e copie o JID terminado em <b>@g.us</b>.</span>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Janela (horas)</label>
+          <input id="g-window" type="number" value="24" min="1" />
+        </div>
+        <div class="field">
+          <label>Horário do envio</label>
+          <input id="g-time" type="time" value="20:00" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Idioma do resumo</label>
+        <select id="g-lang">
+          <option>Português (Brasil)</option>
+          <option>Português (Portugal)</option>
+          <option>Español</option>
+          <option>English</option>
+        </select>
+      </div>
+      <div class="field">
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);font-weight:500;cursor:pointer">
+          <div class="tg-sw on" id="g-auto" onclick="this.classList.toggle('on')"></div>
+          Iniciar envio automático ao salvar
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <span class="left">Você pode editar ou pausar a qualquer momento</span>
+      <div class="right">
+        <button class="btn btn-g" onclick="closeModal()">Cancelar</button>
+        <button class="btn" onclick="saveGroup()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+          Cadastrar grupo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const navItems=document.querySelectorAll('.nav-item');
+const labels={painel:'Painel',resumos:'Resumos',grupos:'Grupos',integracoes:'Integrações',config:'Configurações',logs:'Logs'};
+function show(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v)?.classList.add('active');
+  navItems.forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+  document.getElementById('crumb-cur').textContent=labels[v]||'';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+navItems.forEach(n=>n.addEventListener('click',()=>show(n.dataset.view)));
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),2200)}
+
+function buildWave(id,seed){
+  const el=document.getElementById(id);if(!el)return;
+  let s=seed;const rnd=()=>(s=(s*9301+49297)%233280)/233280;
+  for(let i=0;i<70;i++){const b=document.createElement('div');b.className='b'+(i<22?' on':'');b.style.height=(8+rnd()*26)+'px';el.appendChild(b);}
+  el.addEventListener('click',(e)=>{const r=el.getBoundingClientRect();const p=(e.clientX-r.left)/r.width;[...el.children].forEach((c,i)=>c.classList.toggle('on',i/70<p));});
+}
+buildWave('w1',7);
+
+function togglePlay(btn){
+  const isPlay=btn.dataset.play==='1';
+  btn.dataset.play=isPlay?'0':'1';
+  btn.innerHTML=isPlay?'<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>':'<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>';
+}
+
+const groups=[
+  {n:'Devs Brasil',pf:'wpp',id:'1203630xxxxx@g.us',m:312,d:'7d ↑ 18%',mem:412,on:true,sk:[6,8,5,12,9,14,11]},
+  {n:'AI Builders BR',pf:'tg',id:'-1001234567890',m:198,d:'7d ↑ 22%',mem:286,on:true,sk:[4,6,9,7,10,12,15]},
+  {n:'Trade Cripto BR',pf:'wpp',id:'1203630yyyyy@g.us',m:87,d:'7d ↓ 6%',mem:198,on:true,sk:[10,8,11,6,9,7,5]},
+  {n:'Família Silva',pf:'wpp',id:'1203630aaaaa@g.us',m:43,d:'7d ↑ 4%',mem:38,on:true,sk:[3,5,4,6,5,4,7]},
+  {n:'Marketing Q2',pf:'wpp',id:'1203630bbbbb@g.us',m:121,d:'7d ↑ 11%',mem:24,on:true,sk:[6,8,7,9,11,10,12]},
+  {n:'Pais Dom Bosco',pf:'wpp',id:'1203630ccccc@g.us',m:56,d:'7d → 0%',mem:142,on:false,sk:[5,5,6,5,4,5,5]},
+  {n:'Cinema às Quintas',pf:'tg',id:'-1009876543210',m:34,d:'7d ↓ 12%',mem:68,on:true,sk:[8,6,4,5,3,4,3]},
+  {n:'Indie Devs Talk',pf:'tg',id:'-1004567891234',m:79,d:'7d ↑ 8%',mem:184,on:true,sk:[5,7,6,8,7,9,10]},
+  {n:'Equipe Vendas SP',pf:'wpp',id:'1203630ddddd@g.us',m:182,d:'7d ↑ 15%',mem:32,on:true,sk:[7,9,8,11,10,13,14]},
+];
+const grid=document.getElementById('grupos-grid');
+function spark(arr){const max=Math.max(...arr);const w=200,h=38,sx=w/(arr.length-1);const pts=arr.map((v,i)=>`${i*sx},${h-(v/max)*(h-4)-2}`).join(' L');return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="M${pts}" fill="none" stroke="#FC3B00" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><path d="M${pts} L${w},${h} L0,${h} Z" fill="#FC3B00" fill-opacity=".08"/></svg>`}
+function renderGroups(){
+  grid.innerHTML='';
+  groups.forEach(g=>{
+    const el=document.createElement('div');el.className='gcard';
+    el.innerHTML=`<div class="head"><h4>${g.n}</h4><span class="pf ${g.pf}">${g.pf==='wpp'?'WPP':'TG'}</span></div>
+    <span class="id">${g.id}</span>
+    ${spark(g.sk)}
+    <div class="nums"><div><b>${g.m}</b><small>msgs/dia</small></div><div><b>${g.mem}</b><small>membros</small></div></div>
+    <div class="toggle"><div class="tg-sw ${g.on?'on':''}" onclick="this.classList.toggle('on')"></div>resumo automático ${g.d}</div>`;
+    grid.appendChild(el);
+  });
+  const add=document.createElement('div');add.className='gcard add';add.onclick=openModal;
+  add.innerHTML=`<div class="plus">+</div><b>Cadastrar grupo</b><p>Adicione um grupo do WhatsApp ou Telegram para começar a gerar resumos.</p>`;
+  grid.appendChild(add);
+  const active=groups.filter(g=>g.on).length;const paused=groups.length-active;
+  const c=document.getElementById('grupos-count');if(c)c.textContent=`${active} ativos · ${paused} pausados`;
+}
+renderGroups();
+
+// MODAL
+let curPf='wpp';
+function openModal(){document.getElementById('modal-bg').classList.add('show');setTimeout(()=>document.getElementById('g-name')?.focus(),250)}
+function closeModal(){document.getElementById('modal-bg').classList.remove('show')}
+const RE_WPP=/^\d+(-\d+)?@g\.us$/i;
+const RE_TG=/^-?\d+$/;
+function pickPf(btn){
+  curPf=btn.dataset.pf;
+  document.querySelectorAll('#seg-pf button').forEach(b=>b.classList.toggle('on',b===btn));
+  const isWpp=curPf==='wpp';
+  document.getElementById('g-id-label').textContent=isWpp?'ID do grupo (WhatsApp)':'Chat ID (Telegram)';
+  document.getElementById('g-id').placeholder=isWpp?'1203630xxxxx@g.us':'-1001234567890';
+  document.getElementById('g-help-text').innerHTML=isWpp
+    ?'No WhatsApp, abra o grupo na Evolution API e copie o JID terminado em <b>@g.us</b>.'
+    :'No Telegram, adicione o bot ao grupo e use <b>/getid</b> ou consulte o webhook.';
+  validateId();
+}
+function validateId(){
+  const inp=document.getElementById('g-id');
+  const err=document.getElementById('g-err');
+  const txt=document.getElementById('g-err-text');
+  const v=inp.value.trim();
+  if(!v){inp.classList.remove('invalid');err.classList.remove('show');return true}
+  const ok=curPf==='wpp'?RE_WPP.test(v):RE_TG.test(v);
+  inp.classList.toggle('invalid',!ok);
+  err.classList.toggle('show',!ok);
+  if(!ok){
+    txt.textContent=curPf==='wpp'
+      ?'Formato inválido — esperado dígitos terminados em @g.us'
+      :'Formato inválido — esperado um número inteiro (ex: -1001234567890)';
+  }
+  return ok;
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+function saveGroup(){
+  const name=document.getElementById('g-name').value.trim();
+  const id=document.getElementById('g-id').value.trim();
+  if(!name){toast('Informe o apelido do grupo');return}
+  if(!id){toast('Informe o ID do grupo');return}
+  if(!validateId()){toast('ID do grupo está em formato inválido');return}
+  const on=document.getElementById('g-auto').classList.contains('on');
+  groups.unshift({n:name,pf:curPf,id,m:0,d:'novo',mem:0,on,sk:[3,4,3,5,4,6,5]});
+  renderGroups();
+  closeModal();
+  toast(`${name} cadastrado`);
+  document.getElementById('g-name').value='';
+  document.getElementById('g-id').value='';
+  document.getElementById('g-err').classList.remove('show');
+  document.getElementById('g-id').classList.remove('invalid');
+}
+</script>
+</body>
+</html>
