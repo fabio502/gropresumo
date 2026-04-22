@@ -1,25 +1,39 @@
 import postgres from 'postgres';
 import type { Platform, StoredMessage } from './types';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL nao configurado');
-}
-
 declare global {
   // eslint-disable-next-line no-var
   var __sql: ReturnType<typeof postgres> | undefined;
 }
 
-export const sql =
-  global.__sql ??
-  postgres(process.env.DATABASE_URL!, {
+/**
+ * Client Postgres com inicializacao preguicosa (lazy). Assim o modulo pode ser
+ * importado durante o `next build` (fase "Collecting page data") sem exigir que
+ * DATABASE_URL esteja definido — o erro so e lancado quando uma query e feita.
+ */
+let _client: ReturnType<typeof postgres> | null = null;
+function getClient(): ReturnType<typeof postgres> {
+  if (global.__sql) return global.__sql;
+  if (_client) return _client;
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL nao configurado');
+  const isPooled = url.includes('pooler.supabase.com') || url.includes(':6543');
+  _client = postgres(url, {
     ssl: 'require',
     max: 5,
     idle_timeout: 20,
     connect_timeout: 30,
+    prepare: !isPooled,
   });
+  if (process.env.NODE_ENV !== 'production') global.__sql = _client;
+  return _client;
+}
 
-if (process.env.NODE_ENV !== 'production') global.__sql = sql;
+const sqlTarget: any = (...args: any[]) => (getClient() as any)(...args);
+export const sql = new Proxy(sqlTarget, {
+  apply: (_, __, args) => (getClient() as any)(...args),
+  get: (_, prop: string | symbol) => (getClient() as any)[prop],
+}) as ReturnType<typeof postgres>;
 
 let initialized = false;
 export async function ensureSchema(): Promise<void> {
