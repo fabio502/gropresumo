@@ -1,6 +1,6 @@
 # GrupResumo
 
-Captura mensagens de grupos do **WhatsApp** (via Evolution API) e **Telegram**, gera **resumo com IA** (Claude) e envia o resumo em **áudio** (ElevenLabs) de volta no grupo.
+Captura mensagens de grupos do **WhatsApp** (via Evolution API) e **Telegram**, gera **resumo com IA** (Google Gemini) e envia o resumo em **áudio** (ElevenLabs) de volta no grupo.
 
 Stack: **Next.js 15 (App Router) + Postgres + Vercel Cron** — pronto para deploy na Vercel.
 
@@ -9,7 +9,7 @@ Stack: **Next.js 15 (App Router) + Postgres + Vercel Cron** — pronto para depl
 1. Webhook da Evolution / webhook do Telegram chega no app.
 2. Mensagem é gravada no Postgres.
 3. Vercel Cron dispara `/api/cron/summary` no horário configurado.
-4. Pipeline lê janela de mensagens, gera resumo com Claude, gera MP3 com ElevenLabs.
+4. Pipeline lê janela de mensagens, gera resumo com Gemini, gera MP3 com ElevenLabs.
 5. Áudio é enviado de volta no grupo.
 
 ## Deploy na Vercel

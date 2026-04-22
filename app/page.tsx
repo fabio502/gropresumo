@@ -761,7 +761,7 @@ function Painel({
                       background:
                         s.key === 'evolution'
                           ? 'var(--orange)'
-                          : s.key === 'anthropic'
+                          : s.key === 'gemini'
                             ? 'var(--orange-2)'
                             : s.key === 'postgres'
                               ? 'var(--orange-3)'
@@ -1119,7 +1119,7 @@ function ManualTrigger({
       <p style={{ fontSize: 12.5, color: 'var(--mute)', marginBottom: 18 }}>
         {mode === 'preview'
           ? 'Gera o texto do resumo sem TTS, sem envio e sem apagar mensagens. Útil enquanto as APIs externas ainda não estão totalmente conectadas.'
-          : 'Executa o pipeline completo: resumo (Claude) + áudio (ElevenLabs) + envio (WhatsApp/Telegram) + persistência.'}
+          : 'Executa o pipeline completo: resumo (Gemini) + áudio (ElevenLabs) + envio (WhatsApp/Telegram) + persistência.'}
       </p>
       <div className="manual-grid">
         <div className="field">
@@ -1953,16 +1953,22 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
           <div className="form-grid">
             <div className="lbl">
               <h4>IA · Resumo</h4>
-              <p>Modelo Claude usado para gerar o resumo em PT-BR.</p>
+              <p>
+                Google Gemini usado para gerar o resumo em PT-BR. Pegue sua API key em{' '}
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" style={{ color: 'var(--orange)' }}>
+                  aistudio.google.com/apikey
+                </a>
+                .
+              </p>
             </div>
             <div className="fields">
               <div className="field">
                 <label>API Key</label>
-                <input name="anthropic.apiKey" type="password" placeholder="••••••••" />
+                <input name="gemini.apiKey" type="password" placeholder="AIza••••••••" />
               </div>
               <div className="field">
                 <label>Modelo</label>
-                <input name="anthropic.model" defaultValue="claude-opus-4-7" />
+                <input name="gemini.model" defaultValue="gemini-2.5-flash" />
               </div>
             </div>
           </div>

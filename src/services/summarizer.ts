@@ -1,11 +1,11 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { getConfig } from '../config';
 import type { StoredMessage } from '../types';
 
-async function getClient(): Promise<Anthropic> {
+async function getClient(): Promise<GoogleGenAI> {
   const cfg = await getConfig();
-  if (!cfg.anthropic.apiKey) throw new Error('ANTHROPIC_API_KEY nao configurado');
-  return new Anthropic({ apiKey: cfg.anthropic.apiKey });
+  if (!cfg.gemini.apiKey) throw new Error('GEMINI_API_KEY nao configurado');
+  return new GoogleGenAI({ apiKey: cfg.gemini.apiKey });
 }
 
 const SYSTEM_PROMPT = `Voce e um assistente que resume conversas de grupos.
@@ -32,16 +32,15 @@ export async function summarize(messages: StoredMessage[]): Promise<string> {
   const transcript = formatMessages(messages);
   const userMsg = `Resuma a conversa a seguir do grupo (${messages.length} mensagens):\n\n${transcript}`;
 
-  const resp = await client.messages.create({
-    model: cfg.anthropic.model,
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userMsg }],
+  const resp = await client.models.generateContent({
+    model: cfg.gemini.model,
+    contents: userMsg,
+    config: {
+      systemInstruction: SYSTEM_PROMPT,
+      maxOutputTokens: 1024,
+      temperature: 0.7,
+    },
   });
 
-  return resp.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n')
-    .trim();
+  return (resp.text ?? '').trim();
 }

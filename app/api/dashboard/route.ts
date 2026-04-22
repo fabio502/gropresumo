@@ -120,11 +120,11 @@ export async function GET() {
         state: cfg.telegram.token ? 'ok' : 'off',
       },
       {
-        key: 'anthropic',
-        name: 'Anthropic Claude',
+        key: 'gemini',
+        name: 'Google Gemini',
         short: 'AI',
-        detail: cfg.anthropic.model || 'modelo padrao',
-        state: cfg.anthropic.apiKey ? 'ok' : 'off',
+        detail: cfg.gemini.model || 'modelo padrao',
+        state: cfg.gemini.apiKey ? 'ok' : 'off',
       },
       {
         key: 'elevenlabs',

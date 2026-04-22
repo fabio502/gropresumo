@@ -11,7 +11,7 @@ export interface AppSettings {
     token: string;
     groups: number[];
   };
-  anthropic: {
+  gemini: {
     apiKey: string;
     model: string;
   };
@@ -48,9 +48,9 @@ function defaults(): AppSettings {
         .map((n) => Number(n))
         .filter((n) => !Number.isNaN(n)),
     },
-    anthropic: {
-      apiKey: process.env.ANTHROPIC_API_KEY ?? '',
-      model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-7',
+    gemini: {
+      apiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? '',
+      model: process.env.GEMINI_MODEL ?? 'gemini-2.5-flash',
     },
     elevenlabs: {
       apiKey: process.env.ELEVENLABS_API_KEY ?? '',

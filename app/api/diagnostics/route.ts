@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { Telegraf } from 'telegraf';
 import { loadSettings } from '@/src/settings';
 
@@ -10,19 +10,19 @@ export const maxDuration = 60;
 
 type Check = { name: string; ok: boolean; detail?: string; skipped?: boolean };
 
-async function checkAnthropic(apiKey: string, model: string): Promise<Check> {
-  if (!apiKey) return { name: 'anthropic', ok: false, skipped: true, detail: 'sem api key' };
+async function checkGemini(apiKey: string, model: string): Promise<Check> {
+  if (!apiKey) return { name: 'gemini', ok: false, skipped: true, detail: 'sem api key' };
   try {
-    const client = new Anthropic({ apiKey });
-    const resp = await client.messages.create({
+    const client = new GoogleGenAI({ apiKey });
+    const resp = await client.models.generateContent({
       model,
-      max_tokens: 10,
-      messages: [{ role: 'user', content: 'ping' }],
+      contents: 'ping',
+      config: { maxOutputTokens: 10 },
     });
-    const text = resp.content.find((b: any) => b.type === 'text') as any;
-    return { name: 'anthropic', ok: true, detail: `model=${model} id=${resp.id.slice(0, 10)}…` };
+    const text = (resp.text ?? '').slice(0, 20);
+    return { name: 'gemini', ok: true, detail: `model=${model} resposta="${text}"` };
   } catch (err: any) {
-    return { name: 'anthropic', ok: false, detail: err?.message ?? String(err) };
+    return { name: 'gemini', ok: false, detail: err?.message ?? String(err) };
   }
 }
 
@@ -95,14 +95,14 @@ async function checkDatabase(): Promise<Check> {
 export async function GET() {
   try {
     const cfg = await loadSettings();
-    const [db, anthropic, elevenlabs, evolution, telegram] = await Promise.all([
+    const [db, gemini, elevenlabs, evolution, telegram] = await Promise.all([
       checkDatabase(),
-      checkAnthropic(cfg.anthropic.apiKey, cfg.anthropic.model),
+      checkGemini(cfg.gemini.apiKey, cfg.gemini.model),
       checkElevenlabs(cfg.elevenlabs.apiKey, cfg.elevenlabs.voiceId),
       checkEvolution(cfg.evolution.url, cfg.evolution.apiKey, cfg.evolution.instance),
       checkTelegram(cfg.telegram.token),
     ]);
-    const checks: Check[] = [db, anthropic, elevenlabs, evolution, telegram];
+    const checks: Check[] = [db, gemini, elevenlabs, evolution, telegram];
     const allOk = checks.every((c) => c.ok || c.skipped);
     return NextResponse.json({ ok: allOk, checks });
   } catch (err: any) {

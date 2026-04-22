@@ -552,7 +552,7 @@ body{overflow-x:hidden}
             <div class="statuses">
               <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--orange);color:#fff">EV</div><div><b>Evolution API</b><small>conectado · v 2.1.4</small></div></div><div class="svc-r"><span class="pdot"></span>96 ms</div></div>
               <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--ink);color:#fff">TG</div><div><b>Telegram Bot</b><small>webhook ativo</small></div></div><div class="svc-r"><span class="pdot"></span>122 ms</div></div>
-              <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--orange-2);color:#000">AI</div><div><b>Anthropic Claude</b><small>opus-4-7 · estável</small></div></div><div class="svc-r"><span class="pdot"></span>1.2 s</div></div>
+              <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--orange-2);color:#000">AI</div><div><b>Google Gemini</b><small>2.5-flash · estável</small></div></div><div class="svc-r"><span class="pdot"></span>0.8 s</div></div>
               <div class="svc"><div class="svc-l"><div class="svc-i" style="background:#000;color:#fff">EL</div><div><b>ElevenLabs TTS</b><small>cota: 78% restante</small></div></div><div class="svc-r"><span class="pdot warn"></span>aviso</div></div>
               <div class="svc"><div class="svc-l"><div class="svc-i" style="background:var(--orange-3);color:#000">PG</div><div><b>Postgres (Neon)</b><small>2 conexões abertas</small></div></div><div class="svc-r"><span class="pdot"></span>14 ms</div></div>
               <div class="svc"><div class="svc-l"><div class="svc-i">CR</div><div><b>Vercel Cron</b><small>0 23 * * * · UTC</small></div></div><div class="svc-r"><span class="pdot"></span>ok</div></div>
@@ -671,7 +671,7 @@ body{overflow-x:hidden}
         <div class="grid-3">
           <div class="icard wpp"><div class="head"><div class="logo">EV</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Evolution API</h4><p>Captura de mensagens do WhatsApp via webhook MESSAGES_UPSERT.</p><div class="row"><span>v 2.1.4</span><b>96 ms</b></div></div>
           <div class="icard"><div class="head"><div class="logo">TG</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Telegram Bot</h4><p>Recebe updates por webhook configurado em produção.</p><div class="row"><span>@grupresumo_bot</span><b>122 ms</b></div></div>
-          <div class="icard ai"><div class="head"><div class="logo">AI</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Anthropic Claude</h4><p>Geração de resumo em PT-BR. Modelo: claude-opus-4-7.</p><div class="row"><span>opus 4.7</span><b>1.2 s</b></div></div>
+          <div class="icard ai"><div class="head"><div class="logo">AI</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Google Gemini</h4><p>Geração de resumo em PT-BR. Modelo: gemini-2.5-flash.</p><div class="row"><span>gemini 2.5</span><b>0.8 s</b></div></div>
           <div class="icard"><div class="head"><div class="logo">EL</div><span class="pill"><span class="pdot warn"></span>cota baixa</span></div><h4>ElevenLabs TTS</h4><p>Conversão para áudio. Voz: Bella · multilingual v2.</p><div class="row"><span>78% restante</span><b>2.8 s</b></div></div>
           <div class="icard db"><div class="head"><div class="logo">PG</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Postgres · Neon</h4><p>Mensagens, resumos e settings. Pool serverless.</p><div class="row"><span>2 conexões</span><b>14 ms</b></div></div>
           <div class="icard cron"><div class="head"><div class="logo">CR</div><span class="pill"><span class="pdot"></span>online</span></div><h4>Vercel Cron</h4><p>Disparo diário de pipelines. Configurado em vercel.json.</p><div class="row"><span>0 23 * * *</span><b>UTC</b></div></div>
@@ -708,10 +708,10 @@ body{overflow-x:hidden}
             </div>
           </div>
           <div class="form-grid">
-            <div class="lbl"><h4>IA · Resumo</h4><p>Modelo Claude usado para gerar o resumo em texto fluido em PT-BR.</p></div>
+            <div class="lbl"><h4>IA · Resumo</h4><p>Google Gemini usado para gerar o resumo em texto fluido em PT-BR.</p></div>
             <div class="fields">
-              <div class="field"><label>API Key</label><input type="password" placeholder="••••••••" /></div>
-              <div class="field"><label>Modelo</label><input value="claude-opus-4-7" /></div>
+              <div class="field"><label>API Key</label><input type="password" placeholder="AIza••••••••" /></div>
+              <div class="field"><label>Modelo</label><input value="gemini-2.5-flash" /></div>
             </div>
           </div>
           <div class="form-grid">
