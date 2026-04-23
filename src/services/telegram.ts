@@ -1,6 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { getConfig } from '../config';
-import { saveMessage } from '../db';
+import { saveMessage, upsertTelegramChat } from '../db';
 
 /**
  * Cria uma instancia do Telegraf por request (serverless: sem estado entre invocacoes).
@@ -22,6 +22,11 @@ export async function handleTelegramUpdate(update: any): Promise<void> {
   const chat = msg.chat;
   if (!chat) return;
   if (chat.type !== 'group' && chat.type !== 'supergroup') return;
+
+  // Registra o chat como "visto" para facilitar descoberta de grupos na UI,
+  // mesmo que ainda nao esteja cadastrado em settings.telegram.groups.
+  await upsertTelegramChat(chat.id, chat.title ?? null, chat.type).catch(() => {});
+
   if (cfg.telegram.groups.length && !cfg.telegram.groups.includes(chat.id)) return;
 
   const text: string = msg.text ?? msg.caption ?? '';

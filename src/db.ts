@@ -74,8 +74,61 @@ export async function ensureSchema(): Promise<void> {
       key   TEXT PRIMARY KEY,
       value JSONB NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS telegram_chats (
+      chat_id     BIGINT PRIMARY KEY,
+      title       TEXT,
+      type        TEXT,
+      first_seen  BIGINT NOT NULL,
+      last_seen   BIGINT NOT NULL
+    );
   `);
   initialized = true;
+}
+
+export interface TelegramChatRow {
+  chatId: number;
+  title: string | null;
+  type: string | null;
+  firstSeen: number;
+  lastSeen: number;
+}
+
+export async function upsertTelegramChat(
+  chatId: number,
+  title: string | null,
+  type: string | null,
+): Promise<void> {
+  await ensureSchema();
+  const now = Date.now();
+  await sql`
+    INSERT INTO telegram_chats (chat_id, title, type, first_seen, last_seen)
+    VALUES (${chatId}, ${title}, ${type}, ${now}, ${now})
+    ON CONFLICT (chat_id) DO UPDATE SET
+      title     = COALESCE(EXCLUDED.title, telegram_chats.title),
+      type      = COALESCE(EXCLUDED.type, telegram_chats.type),
+      last_seen = EXCLUDED.last_seen
+  `;
+}
+
+export async function listTelegramChats(): Promise<TelegramChatRow[]> {
+  await ensureSchema();
+  const rows = await sql<any[]>`
+    SELECT chat_id    AS "chatId",
+           title,
+           type,
+           first_seen AS "firstSeen",
+           last_seen  AS "lastSeen"
+    FROM telegram_chats
+    ORDER BY last_seen DESC
+  `;
+  return rows.map((r) => ({
+    chatId: Number(r.chatId),
+    title: r.title,
+    type: r.type,
+    firstSeen: Number(r.firstSeen),
+    lastSeen: Number(r.lastSeen),
+  }));
 }
 
 export async function saveMessage(msg: StoredMessage): Promise<void> {

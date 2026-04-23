@@ -1749,11 +1749,31 @@ interface TgCheckResult {
   error?: string;
 }
 
+interface DiscoveredChat {
+  chatId: number;
+  title: string | null;
+  type: string | null;
+  memberCount?: number;
+  active: boolean;
+  source: 'db' | 'getUpdates' | 'both';
+  lastSeen?: number;
+}
+
+interface DiscoverResult {
+  ok: boolean;
+  note?: string | null;
+  chats?: DiscoveredChat[];
+  error?: string;
+}
+
 function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) => void }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [status, setStatus] = useState('carregando…');
   const [tgCheck, setTgCheck] = useState<TgCheckResult | null>(null);
   const [tgChecking, setTgChecking] = useState(false);
+  const [tgDiscover, setTgDiscover] = useState<DiscoverResult | null>(null);
+  const [tgDiscovering, setTgDiscovering] = useState(false);
+  const [tgSelected, setTgSelected] = useState<Set<number>>(new Set());
 
   const load = useCallback(async () => {
     setStatus('carregando…');
@@ -1815,6 +1835,51 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
     const data = await r.json().catch(() => ({}));
     if (r.ok && data.ok) showToast(`Webhook OK: ${data.webhook}`);
     else showToast('Falha: ' + (data.error || r.status), true);
+  }
+
+  async function discoverTelegramChats() {
+    setTgDiscovering(true);
+    try {
+      const r = await fetch('/api/telegram/chats', { cache: 'no-store' });
+      const data: DiscoverResult = await r.json();
+      setTgDiscover(data);
+      if (data.chats) {
+        setTgSelected(new Set(data.chats.filter((c) => c.active).map((c) => c.chatId)));
+      }
+      if (!r.ok) showToast(data.error || 'falha na descoberta', true);
+      else if (!data.chats?.length) showToast('nenhum grupo descoberto ainda', true);
+      else showToast(`${data.chats.length} grupo(s) encontrado(s)`);
+    } catch (err: any) {
+      setTgDiscover({ ok: false, error: err?.message ?? 'erro' });
+      showToast('erro: ' + (err?.message ?? 'falha'), true);
+    } finally {
+      setTgDiscovering(false);
+    }
+  }
+
+  function toggleTgChat(chatId: number) {
+    setTgSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) next.delete(chatId);
+      else next.add(chatId);
+      return next;
+    });
+  }
+
+  async function saveSelectedTgChats() {
+    const groups = Array.from(tgSelected);
+    const r = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ telegram: { groups } }),
+    });
+    if (r.ok) {
+      showToast(`${groups.length} grupo(s) salvos`);
+      load();
+    } else {
+      const err = await r.json().catch(() => ({}));
+      showToast('Erro: ' + (err.error || r.status), true);
+    }
   }
 
   async function verifyTelegramGroups() {
@@ -1891,6 +1956,14 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
               <div className="field">
                 <label>&nbsp;</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={discoverTelegramChats}
+                    disabled={tgDiscovering}
+                  >
+                    {tgDiscovering ? 'descobrindo…' : 'Descobrir grupos'}
+                  </button>
                   <button type="button" className="btn btn-g" onClick={setupTelegramWebhook}>
                     Registrar webhook
                   </button>
@@ -1904,6 +1977,81 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
                   </button>
                 </div>
               </div>
+              {tgDiscover && (
+                <div className="field full">
+                  <div className="tg-discover">
+                    <div className="tg-discover-h">
+                      <b>Grupos descobertos</b>
+                      <span>
+                        {tgDiscover.chats?.length ?? 0} encontrado(s) · selecione para monitorar
+                      </span>
+                    </div>
+                    {tgDiscover.note && <div className="tg-discover-note">{tgDiscover.note}</div>}
+                    {tgDiscover.error && <div className="tg-check-err">{tgDiscover.error}</div>}
+                    {!tgDiscover.chats?.length && !tgDiscover.error && (
+                      <div className="tg-discover-empty">
+                        <p>Nenhum grupo encontrado ainda.</p>
+                        <ol>
+                          <li>Abra o Telegram e adicione seu bot ao grupo</li>
+                          <li>Envie qualquer mensagem no grupo (ou <code>/start</code>)</li>
+                          <li>Volte aqui e clique em <b>Descobrir grupos</b> novamente</li>
+                        </ol>
+                      </div>
+                    )}
+                    {(tgDiscover.chats ?? []).map((c) => {
+                      const sel = tgSelected.has(c.chatId);
+                      return (
+                        <label
+                          key={c.chatId}
+                          className={`tg-discover-row ${sel ? 'on' : ''}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleTgChat(c.chatId);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={sel}
+                            readOnly
+                            tabIndex={-1}
+                            style={{ pointerEvents: 'none' }}
+                          />
+                          <div className="tg-discover-body">
+                            <div className="tg-discover-title">
+                              <b>{c.title ?? `chat ${c.chatId}`}</b>
+                              {c.type && <span className="tg-check-tag">{c.type}</span>}
+                              {c.active && <span className="tg-discover-active">ativo</span>}
+                            </div>
+                            <div className="tg-check-meta">
+                              <span>id: {c.chatId}</span>
+                              {c.memberCount != null && <span>· {c.memberCount} membros</span>}
+                              {c.lastSeen && (
+                                <span>
+                                  · última msg:{' '}
+                                  {new Date(c.lastSeen).toLocaleString('pt-BR', {
+                                    dateStyle: 'short',
+                                    timeStyle: 'short',
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                    {tgDiscover.chats && tgDiscover.chats.length > 0 && (
+                      <div className="tg-discover-foot">
+                        <span>
+                          <b>{tgSelected.size}</b> selecionado(s)
+                        </span>
+                        <button type="button" className="btn" onClick={saveSelectedTgChats}>
+                          Salvar seleção
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="field full">
                 <label>Chat IDs (números separados por vírgula)</label>
                 <textarea name="telegram.groups" placeholder="-1001234567890, ..." />
