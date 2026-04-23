@@ -1060,6 +1060,7 @@ function ManualTrigger({
   const [mode, setMode] = useState<'preview' | 'run'>('preview');
   const [loading, setLoading] = useState(false);
   const [lastPreview, setLastPreview] = useState<string | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
   const [groupOptions, setGroupOptions] = useState<{ id: string; label: string }[]>([]);
   const flashRef = useRef<HTMLDivElement | null>(null);
 
@@ -1132,6 +1133,7 @@ function ManualTrigger({
     if (!id) return showToast('Informe o Group ID', true);
     setLoading(true);
     setLastPreview(null);
+    setLastError(null);
     try {
       const url = mode === 'preview' ? '/api/summary/preview' : '/api/summary/run';
       const r = await fetch(url, {
@@ -1147,10 +1149,13 @@ function ManualTrigger({
         if (mode === 'preview' && data.text) setLastPreview(data.text);
         onDone();
       } else {
-        showToast('Falha: ' + (data.reason || data.error || r.status), true);
+        const reason = data.reason || data.error || `HTTP ${r.status}`;
+        setLastError(reason);
+        showToast('Falha — detalhes no painel abaixo', true);
       }
     } catch (err: any) {
-      showToast('Erro: ' + (err?.message ?? err), true);
+      setLastError(err?.message ?? String(err));
+      showToast('Erro — detalhes no painel abaixo', true);
     } finally {
       setLoading(false);
     }
@@ -1237,6 +1242,25 @@ function ManualTrigger({
           }}
         >
           {lastPreview}
+        </div>
+      )}
+      {lastError && (
+        <div
+          style={{
+            marginTop: 18,
+            padding: 16,
+            background: '#fff4f0',
+            border: '1px solid var(--orange)',
+            borderRadius: 10,
+            fontSize: 13,
+            lineHeight: 1.55,
+            color: 'var(--ink)',
+          }}
+        >
+          <div style={{ fontWeight: 700, color: 'var(--orange)', marginBottom: 6 }}>
+            Não foi possível gerar o resumo
+          </div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{lastError}</div>
         </div>
       )}
     </div>

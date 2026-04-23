@@ -53,12 +53,20 @@ export async function runSummaryPipeline(
 
   console.log(`[pipeline] ${platform}/${groupId}: ${messages.length} mensagens na janela`);
   if (messages.length < minMessages) {
+    const hint =
+      platform === 'telegram'
+        ? 'Verifique se o bot foi adicionado ao grupo e se o webhook esta registrado (Configuracoes > Telegram > Registrar webhook).'
+        : 'Verifique se a Evolution API esta conectada e se o groupId confere (formato 1203xxxxx@g.us).';
+    const reason =
+      messages.length === 0
+        ? `nenhuma mensagem capturada para este grupo na janela de ${windowHours}h. ${hint}`
+        : `apenas ${messages.length} mensagem(ns) na janela de ${windowHours}h — minimo ${minMessages}.`;
     return {
       ok: false,
       messageCount: messages.length,
       windowStart,
       windowEnd,
-      reason: `mensagens insuficientes (min ${minMessages})`,
+      reason,
     };
   }
 
