@@ -17,6 +17,14 @@ export interface DiscoveredChat {
   lastSeen?: number;
 }
 
+export interface WebhookDiagnostic {
+  url: string;
+  pendingCount: number;
+  lastErrorAt?: number;
+  lastErrorMessage?: string;
+  hasError: boolean;
+}
+
 export async function GET() {
   const cfg = await loadSettings();
   if (!cfg.telegram.token) {
@@ -46,9 +54,17 @@ export async function GET() {
   // 2) Fallback via getUpdates — funciona apenas quando webhook nao esta registrado.
   //    Util na primeira configuracao, antes do webhook estar ativo.
   let webhookInfoNote: string | null = null;
+  let webhook: WebhookDiagnostic | null = null;
   try {
     const info: any = await bot.telegram.getWebhookInfo();
     if (info?.url) {
+      webhook = {
+        url: info.url,
+        pendingCount: info.pending_update_count ?? 0,
+        lastErrorAt: info.last_error_date ? info.last_error_date * 1000 : undefined,
+        lastErrorMessage: info.last_error_message,
+        hasError: Boolean(info.last_error_message),
+      };
       webhookInfoNote = `webhook ativo em ${info.url} — getUpdates desativado. Grupos aparecem apos o bot receber mensagens.`;
     } else {
       const updates: any[] = await (bot.telegram as any).getUpdates(100, 100, 0, [
@@ -107,6 +123,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     note: webhookInfoNote,
+    webhook,
     chats,
   });
 }

@@ -1762,6 +1762,13 @@ interface DiscoveredChat {
 interface DiscoverResult {
   ok: boolean;
   note?: string | null;
+  webhook?: {
+    url: string;
+    pendingCount: number;
+    lastErrorAt?: number;
+    lastErrorMessage?: string;
+    hasError: boolean;
+  } | null;
   chats?: DiscoveredChat[];
   error?: string;
 }
@@ -1986,7 +1993,44 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
                         {tgDiscover.chats?.length ?? 0} encontrado(s) · selecione para monitorar
                       </span>
                     </div>
-                    {tgDiscover.note && <div className="tg-discover-note">{tgDiscover.note}</div>}
+                    {tgDiscover.webhook && (
+                      <div className={`tg-webhook-info ${tgDiscover.webhook.hasError ? 'err' : ''}`}>
+                        <div className="tg-webhook-row">
+                          <span className="tg-webhook-k">webhook</span>
+                          <code className="tg-webhook-v">{tgDiscover.webhook.url}</code>
+                        </div>
+                        <div className="tg-webhook-row">
+                          <span className="tg-webhook-k">pendentes</span>
+                          <b>{tgDiscover.webhook.pendingCount}</b>
+                        </div>
+                        {tgDiscover.webhook.hasError && (
+                          <>
+                            <div className="tg-webhook-row">
+                              <span className="tg-webhook-k">último erro</span>
+                              <span style={{ color: 'var(--orange)', fontWeight: 600 }}>
+                                {tgDiscover.webhook.lastErrorMessage}
+                              </span>
+                            </div>
+                            {tgDiscover.webhook.lastErrorAt && (
+                              <div className="tg-webhook-row">
+                                <span className="tg-webhook-k">em</span>
+                                <span>
+                                  {new Date(tgDiscover.webhook.lastErrorAt).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                            )}
+                            <div className="tg-webhook-hint">
+                              O Telegram não está conseguindo entregar as mensagens no app. Clique em{' '}
+                              <b>Registrar webhook</b> novamente para reapontar para a URL de produção
+                              atual.
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {tgDiscover.note && !tgDiscover.webhook?.hasError && (
+                      <div className="tg-discover-note">{tgDiscover.note}</div>
+                    )}
                     {tgDiscover.error && <div className="tg-check-err">{tgDiscover.error}</div>}
                     {!tgDiscover.chats?.length && !tgDiscover.error && (
                       <div className="tg-discover-empty">

@@ -11,10 +11,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
+  // Prioriza a URL de producao (estavel) sobre a URL do deployment especifico.
+  // VERCEL_PROJECT_PRODUCTION_URL e estavel entre deploys; VERCEL_URL muda a cada deploy.
   const base =
     body.url ??
     process.env.APP_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : '');
   if (!base) {
     return NextResponse.json(
       { ok: false, error: 'forneca url ou defina APP_URL' },
