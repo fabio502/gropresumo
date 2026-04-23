@@ -1834,14 +1834,19 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
 
   async function setupTelegramWebhook() {
     showToast('registrando webhook do Telegram…');
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const r = await fetch('/api/telegram/webhook', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ url: origin }),
     });
     const data = await r.json().catch(() => ({}));
-    if (r.ok && data.ok) showToast(`Webhook OK: ${data.webhook}`);
-    else showToast('Falha: ' + (data.error || r.status), true);
+    if (r.ok && data.ok) {
+      showToast(`Webhook OK: ${data.webhook}`);
+      discoverTelegramChats().catch(() => {});
+    } else {
+      showToast('Falha: ' + (data.error || r.status), true);
+    }
   }
 
   async function discoverTelegramChats() {
@@ -2151,6 +2156,10 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
                   aistudio.google.com/apikey
                 </a>
                 .
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--mute)', marginTop: 8, lineHeight: 1.5 }}>
+                <b>Free tier:</b> 20 req/dia/modelo. Se estourar, troque para{' '}
+                <code>gemini-2.5-flash-lite</code> (cota maior) ou ative billing no projeto Google Cloud.
               </p>
             </div>
             <div className="fields">

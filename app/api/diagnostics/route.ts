@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import axios from 'axios';
 import { GoogleGenAI } from '@google/genai';
 import { Telegraf } from 'telegraf';
-import { loadSettings } from '@/src/settings';
+import { cleanSecret, loadSettings } from '@/src/settings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,30 +13,85 @@ type Check = { name: string; ok: boolean; detail?: string; skipped?: boolean };
 async function checkGemini(apiKey: string, model: string): Promise<Check> {
   if (!apiKey) return { name: 'gemini', ok: false, skipped: true, detail: 'sem api key' };
   try {
-    const client = new GoogleGenAI({ apiKey });
-    const resp = await client.models.generateContent({
-      model,
-      contents: 'ping',
-      config: { maxOutputTokens: 10 },
-    });
-    const text = (resp.text ?? '').slice(0, 20);
-    return { name: 'gemini', ok: true, detail: `model=${model} resposta="${text}"` };
+    // Valida chave + modelo via metadata — nao consome quota de generateContent
+    // (o free tier permite apenas 20 generateContent/dia por modelo).
+    const client = new GoogleGenAI({ apiKey: apiKey.trim() });
+    const normalized = model.startsWith('models/') ? model : `models/${model}`;
+    const info: any = await (client.models as any).get({ model: normalized });
+    const display = info?.displayName ?? info?.name ?? model;
+    return { name: 'gemini', ok: true, detail: `${display} · chave valida` };
   } catch (err: any) {
-    return { name: 'gemini', ok: false, detail: err?.message ?? String(err) };
+    const msg: string = err?.message ?? String(err);
+    if (msg.toLowerCase().includes('not found')) {
+      return {
+        name: 'gemini',
+        ok: false,
+        detail: `modelo "${model}" nao disponivel. Tente gemini-2.5-flash, gemini-2.5-flash-lite ou gemini-2.5-pro.`,
+      };
+    }
+    return { name: 'gemini', ok: false, detail: msg };
   }
 }
 
 async function checkElevenlabs(apiKey: string, voiceId: string): Promise<Check> {
   if (!apiKey) return { name: 'elevenlabs', ok: false, skipped: true, detail: 'sem api key' };
+  const headers = { 'xi-api-key': cleanSecret(apiKey) };
+  const extractMsg = (err: any): string =>
+    err?.response?.data?.detail?.message ??
+    err?.response?.data?.detail ??
+    err?.response?.data?.message ??
+    err?.message ??
+    String(err);
+
+  if (voiceId) {
+    try {
+      const r = await axios.get(
+        `https://api.elevenlabs.io/v1/voices/${encodeURIComponent(voiceId)}`,
+        { headers, timeout: 15_000 },
+      );
+      const name = r.data?.name ?? voiceId;
+      const category = r.data?.category ? ` (${r.data.category})` : '';
+      return { name: 'elevenlabs', ok: true, detail: `voz "${name}"${category}` };
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const msg = extractMsg(err);
+      if (status === 404) {
+        return { name: 'elevenlabs', ok: false, detail: `voz ${voiceId} nao encontrada na conta` };
+      }
+      if (status === 401) {
+        return { name: 'elevenlabs', ok: false, detail: 'api key invalida' };
+      }
+      if (status !== 403) {
+        return { name: 'elevenlabs', ok: false, detail: msg };
+      }
+    }
+  }
+
   try {
-    const r = await axios.get('https://api.elevenlabs.io/v1/user', {
-      headers: { 'xi-api-key': apiKey },
+    const r = await axios.get('https://api.elevenlabs.io/v1/models', {
+      headers,
       timeout: 15_000,
     });
-    const extra = voiceId ? ` voice=${voiceId}` : '';
-    return { name: 'elevenlabs', ok: true, detail: `user=${r.data?.xi_api_key?.slice?.(0, 4) ?? 'ok'}${extra}` };
+    const models = Array.isArray(r.data) ? r.data : [];
+    const extra = voiceId ? ` · voz=${voiceId} nao verificada (falta voices_read)` : '';
+    return {
+      name: 'elevenlabs',
+      ok: true,
+      detail: `${models.length} modelo(s) disponivel(is)${extra}`,
+    };
   } catch (err: any) {
-    const msg = err?.response?.data?.detail?.message ?? err?.message ?? String(err);
+    const status = err?.response?.status;
+    const msg = extractMsg(err);
+    if (status === 401) {
+      return { name: 'elevenlabs', ok: false, detail: 'api key invalida' };
+    }
+    if (status === 403 || /permission/i.test(msg)) {
+      return {
+        name: 'elevenlabs',
+        ok: true,
+        detail: `chave TTS-only (sem voices_read/models_list) · voz=${voiceId || 'default'} nao verificada`,
+      };
+    }
     return { name: 'elevenlabs', ok: false, detail: msg };
   }
 }
@@ -48,7 +103,7 @@ async function checkEvolution(url: string, apiKey: string, instance: string): Pr
   try {
     const base = url.replace(/\/$/, '');
     const r = await axios.get(`${base}/instance/fetchInstances`, {
-      headers: { apikey: apiKey },
+      headers: { apikey: cleanSecret(apiKey) },
       timeout: 15_000,
     });
     const list = Array.isArray(r.data) ? r.data : r.data?.instances ?? [];

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getConfig } from '../config';
 import { saveMessage } from '../db';
+import { cleanSecret } from '../settings';
 import type { StoredMessage } from '../types';
 
 async function client() {
@@ -8,7 +9,7 @@ async function client() {
   return axios.create({
     baseURL: cfg.evolution.url,
     headers: {
-      apikey: cfg.evolution.apiKey,
+      apikey: cleanSecret(cfg.evolution.apiKey),
       'Content-Type': 'application/json',
     },
     timeout: 30_000,

@@ -144,6 +144,17 @@ export function maskSecrets(s: AppSettings): AppSettings {
   return clone;
 }
 
+/**
+ * Remove caracteres invisiveis (whitespace unicode, controles, BOM, zero-width)
+ * de valores de secrets. Esses chars vazam em copy/paste e causam erros como
+ * "Invalid character in header content" em clientes HTTP.
+ */
+export function cleanSecret(raw: unknown): string {
+  return String(raw ?? '')
+    .replace(/[\s\u0000-\u001F\u007F-\u00A0\u2000-\u200F\u2028-\u202F\u205F-\u206F\uFEFF]/g, '')
+    .trim();
+}
+
 export function sanitizePatch(input: any): Partial<AppSettings> {
   if (!input || typeof input !== 'object') return {};
   const out: any = {};
@@ -151,7 +162,7 @@ export function sanitizePatch(input: any): Partial<AppSettings> {
     if (v && typeof v === 'object' && !Array.isArray(v)) {
       out[k] = sanitizePatch(v);
     } else if (SECRET_KEYS.has(k)) {
-      const s = String(v ?? '').trim();
+      const s = cleanSecret(v);
       if (s && !s.includes('…') && !s.includes('•')) out[k] = s;
     } else {
       out[k] = v;
