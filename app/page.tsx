@@ -2000,6 +2000,7 @@ interface DiscoveredChat {
   title: string | null;
   type: string | null;
   memberCount?: number;
+  messageCount?: number;
   active: boolean;
   source: 'db' | 'getUpdates' | 'both';
   lastSeen?: number;
@@ -2320,6 +2321,16 @@ function Configuracoes({ showToast }: { showToast: (msg: string, err?: boolean) 
                             <div className="tg-check-meta">
                               <span>id: {c.chatId}</span>
                               {c.memberCount != null && <span>· {c.memberCount} membros</span>}
+                              {c.messageCount != null && (
+                                <span
+                                  style={{
+                                    color: c.messageCount > 0 ? 'var(--ok)' : 'var(--orange)',
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  · {c.messageCount} msg(s) capturadas
+                                </span>
+                              )}
                               {c.lastSeen && (
                                 <span>
                                   · última msg:{' '}

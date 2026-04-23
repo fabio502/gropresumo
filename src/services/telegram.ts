@@ -13,24 +13,45 @@ async function getBot(): Promise<Telegraf> {
 
 /**
  * Processa um update bruto do webhook do Telegram e persiste a mensagem.
+ * Loga verbosamente todos os motivos de rejeicao para facilitar diagnostico.
  */
 export async function handleTelegramUpdate(update: any): Promise<void> {
-  const cfg = await getConfig();
-  const msg = update?.message ?? update?.channel_post;
-  if (!msg) return;
+  const updateId = update?.update_id;
+  const msg = update?.message ?? update?.channel_post ?? update?.edited_message ?? update?.edited_channel_post;
+  if (!msg) {
+    console.log(`[telegram] update ${updateId} sem message/channel_post — keys:`, Object.keys(update ?? {}));
+    return;
+  }
 
   const chat = msg.chat;
-  if (!chat) return;
-  if (chat.type !== 'group' && chat.type !== 'supergroup') return;
+  if (!chat) {
+    console.log(`[telegram] update ${updateId} sem chat`);
+    return;
+  }
+  if (chat.type !== 'group' && chat.type !== 'supergroup') {
+    console.log(`[telegram] update ${updateId} ignorado — chat.type=${chat.type} (so grupos)`);
+    return;
+  }
 
   // Registra o chat como "visto" para facilitar descoberta de grupos na UI,
   // mesmo que ainda nao esteja cadastrado em settings.telegram.groups.
-  await upsertTelegramChat(chat.id, chat.title ?? null, chat.type).catch(() => {});
+  await upsertTelegramChat(chat.id, chat.title ?? null, chat.type).catch((err) => {
+    console.error('[telegram] upsertTelegramChat falhou:', err?.message ?? err);
+  });
 
-  if (cfg.telegram.groups.length && !cfg.telegram.groups.includes(chat.id)) return;
+  const cfg = await getConfig();
+  if (cfg.telegram.groups.length && !cfg.telegram.groups.includes(chat.id)) {
+    console.log(
+      `[telegram] chat ${chat.id} (${chat.title}) visto mas NAO cadastrado em settings.telegram.groups — ignorando mensagem`,
+    );
+    return;
+  }
 
   const text: string = msg.text ?? msg.caption ?? '';
-  if (!text.trim()) return;
+  if (!text.trim()) {
+    console.log(`[telegram] chat ${chat.id} msg sem texto (tipo?: ${Object.keys(msg).join(',')})`);
+    return;
+  }
 
   const from = msg.from;
   const senderName = from
@@ -48,6 +69,9 @@ export async function handleTelegramUpdate(update: any): Promise<void> {
     content: text,
     timestamp: (msg.date ?? Math.floor(Date.now() / 1000)) * 1000,
   });
+  console.log(
+    `[telegram] ✓ msg salva · chat=${chat.id} (${chat.title}) sender=${senderName} text="${text.slice(0, 60)}"`,
+  );
 }
 
 export async function sendTelegramText(groupId: string, text: string): Promise<void> {
@@ -65,7 +89,18 @@ export async function sendTelegramAudio(groupId: string, audio: Buffer): Promise
  */
 export async function setTelegramWebhook(url: string): Promise<void> {
   const bot = await getBot();
-  await bot.telegram.setWebhook(url);
+  // allowed_updates explicito garante que recebemos mensagens de texto de grupos
+  // (se omitido, o Telegram aplica o padrao que inclui message, mas seja explicito).
+  await bot.telegram.setWebhook(url, {
+    allowed_updates: [
+      'message',
+      'edited_message',
+      'channel_post',
+      'edited_channel_post',
+      'my_chat_member',
+    ],
+    drop_pending_updates: false,
+  });
 }
 
 export async function deleteTelegramWebhook(): Promise<void> {

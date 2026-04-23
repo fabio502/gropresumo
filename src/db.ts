@@ -111,6 +111,19 @@ export async function upsertTelegramChat(
   `;
 }
 
+export async function countMessagesForGroup(
+  platform: Platform,
+  groupId: string,
+): Promise<number> {
+  await ensureSchema();
+  const rows = await sql<{ count: string }[]>`
+    SELECT COUNT(*)::text AS count
+    FROM messages
+    WHERE platform = ${platform} AND group_id = ${groupId}
+  `;
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function listTelegramChats(): Promise<TelegramChatRow[]> {
   await ensureSchema();
   const rows = await sql<any[]>`

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Telegraf } from 'telegraf';
 import { loadSettings } from '@/src/settings';
-import { listTelegramChats, upsertTelegramChat } from '@/src/db';
+import { countMessagesForGroup, listTelegramChats, upsertTelegramChat } from '@/src/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +12,7 @@ export interface DiscoveredChat {
   title: string | null;
   type: string | null;
   memberCount?: number;
+  messageCount?: number;
   active: boolean;
   source: 'db' | 'getUpdates' | 'both';
   lastSeen?: number;
@@ -93,7 +94,7 @@ export async function GET() {
     webhookInfoNote = `falha em getUpdates: ${err?.message ?? err}`;
   }
 
-  // 3) Enriquece com contagem de membros quando possivel
+  // 3) Enriquece com contagem de membros e mensagens capturadas
   const chats = Array.from(byId.values());
   await Promise.all(
     chats.map(async (c) => {
@@ -101,6 +102,11 @@ export async function GET() {
         c.memberCount = await bot.telegram.getChatMembersCount(c.chatId);
       } catch {
         /* grupo onde o bot nao esta mais, ignora */
+      }
+      try {
+        c.messageCount = await countMessagesForGroup('telegram', String(c.chatId));
+      } catch {
+        /* ignora */
       }
     }),
   );
