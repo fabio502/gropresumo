@@ -1058,10 +1058,14 @@ function ManualTrigger({
   const [groupId, setGroupId] = useState('');
   const [windowHours, setWindowHours] = useState(windowHoursDefault);
   const [mode, setMode] = useState<'preview' | 'run'>('preview');
+  const [source, setSource] = useState<'group' | 'pasted'>('group');
+  const [pastedText, setPastedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastPreview, setLastPreview] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [groupOptions, setGroupOptions] = useState<{ id: string; label: string }[]>([]);
+  const [availableCount, setAvailableCount] = useState<number | null>(null);
+  const [countLoading, setCountLoading] = useState(false);
   const flashRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => setWindowHours(windowHoursDefault), [windowHoursDefault]);
@@ -1128,25 +1132,74 @@ function ManualTrigger({
     return () => clearTimeout(t);
   }, [intent?.nonce, intent?.platform, intent?.groupId, intent?.mode]);
 
+  // Busca a contagem de mensagens disponiveis (debounced) sempre que os
+  // parametros mudam. Isso evita o submit cair em "mensagens insuficientes"
+  // sem o usuario saber de antemao.
+  useEffect(() => {
+    if (source !== 'group') return;
+    if (!groupId.trim() || !windowHours) {
+      setAvailableCount(null);
+      return;
+    }
+    let cancelled = false;
+    setCountLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const q = new URLSearchParams({
+          platform,
+          groupId: groupId.trim(),
+          windowHours: String(windowHours),
+        });
+        const r = await fetch(`/api/summary/count?${q}`, { cache: 'no-store' });
+        const data = await r.json().catch(() => ({}));
+        if (!cancelled) setAvailableCount(r.ok && data.ok ? Number(data.count) : null);
+      } catch {
+        if (!cancelled) setAvailableCount(null);
+      } finally {
+        if (!cancelled) setCountLoading(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [platform, groupId, windowHours, source]);
+
   async function trigger() {
-    const id = groupId.trim();
-    if (!id) return showToast('Informe o Group ID', true);
     setLoading(true);
     setLastPreview(null);
     setLastError(null);
     try {
-      const url = mode === 'preview' ? '/api/summary/preview' : '/api/summary/run';
+      let url: string;
+      let body: Record<string, unknown>;
+      if (source === 'pasted') {
+        if (!pastedText.trim()) {
+          setLoading(false);
+          return showToast('Cole ao menos uma linha de texto', true);
+        }
+        url = '/api/summary/preview';
+        body = { pastedText };
+      } else {
+        const id = groupId.trim();
+        if (!id) {
+          setLoading(false);
+          return showToast('Selecione um grupo', true);
+        }
+        url = mode === 'preview' ? '/api/summary/preview' : '/api/summary/run';
+        body = { platform, groupId: id, windowHours };
+      }
       const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform, groupId: id, windowHours }),
+        body: JSON.stringify(body),
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok && data.ok) {
+        const isPreview = source === 'pasted' || mode === 'preview';
         showToast(
-          `OK · ${data.messageCount ?? 0} mensagens · ${mode === 'preview' ? 'pré-visualizado' : 'enviado'}`,
+          `OK · ${data.messageCount ?? 0} mensagens · ${isPreview ? 'pré-visualizado' : 'enviado'}`,
         );
-        if (mode === 'preview' && data.text) setLastPreview(data.text);
+        if (isPreview && data.text) setLastPreview(data.text);
         onDone();
       } else {
         const reason = data.reason || data.error || `HTTP ${r.status}`;
@@ -1174,60 +1227,158 @@ function ManualTrigger({
           </button>
         </div>
       </div>
-      <p style={{ fontSize: 12.5, color: 'var(--mute)', marginBottom: 18 }}>
-        {mode === 'preview'
-          ? 'Gera o texto do resumo sem TTS, sem envio e sem apagar mensagens. Útil enquanto as APIs externas ainda não estão totalmente conectadas.'
-          : 'Executa o pipeline completo: resumo (Gemini) + áudio (ElevenLabs) + envio (WhatsApp/Telegram) + persistência.'}
+      <p style={{ fontSize: 12.5, color: 'var(--mute)', marginBottom: 14 }}>
+        {source === 'pasted'
+          ? 'Cole uma conversa (1 mensagem por linha, formato opcional "Nome: texto") para testar o resumo sem depender da captura de mensagens.'
+          : mode === 'preview'
+            ? 'Gera o texto do resumo sem TTS, sem envio e sem apagar mensagens. Útil enquanto as APIs externas ainda não estão totalmente conectadas.'
+            : 'Executa o pipeline completo: resumo (Gemini) + áudio (ElevenLabs) + envio (WhatsApp/Telegram) + persistência.'}
       </p>
-      <div className="manual-grid">
-        <div className="field">
-          <label>Plataforma</label>
-          <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="telegram">Telegram</option>
-          </select>
+      <div
+        style={{
+          display: 'inline-flex',
+          gap: 0,
+          marginBottom: 16,
+          border: '1px solid var(--hair)',
+          borderRadius: 8,
+          overflow: 'hidden',
+        }}
+      >
+        <button
+          type="button"
+          className={`tool-btn ${source === 'group' ? 'on' : ''}`}
+          onClick={() => setSource('group')}
+          style={{ borderRadius: 0, border: 'none' }}
+        >
+          Grupo cadastrado
+        </button>
+        <button
+          type="button"
+          className={`tool-btn ${source === 'pasted' ? 'on' : ''}`}
+          onClick={() => setSource('pasted')}
+          style={{ borderRadius: 0, border: 'none' }}
+        >
+          Colar texto
+        </button>
+      </div>
+      {source === 'pasted' ? (
+        <div className="field full">
+          <label>Conversa colada</label>
+          <textarea
+            value={pastedText}
+            onChange={(e) => setPastedText(e.target.value)}
+            rows={10}
+            placeholder={'Ana: bom dia galera\nBruno: alguém vai pra conferência?\nCarla: eu vou sim, te vejo lá\n...'}
+            style={{ fontFamily: 'ui-monospace, monospace', fontSize: 13 }}
+          />
+          <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 6 }}>
+            {pastedText.split('\n').filter((l) => l.trim()).length} linha(s) · modo teste não envia nem persiste
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <button className="btn" onClick={trigger} disabled={loading || !pastedText.trim()}>
+              {loading ? 'resumindo…' : 'Resumir texto colado'}
+            </button>
+          </div>
         </div>
-        <div className="field">
-          <label>Grupo</label>
-          {groupOptions.length ? (
-            <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-              {groupOptions.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-          ) : (
+      ) : (
+        <>
+          <div className="manual-grid">
+            <div className="field">
+              <label>Plataforma</label>
+              <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform)}>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="telegram">Telegram</option>
+              </select>
+            </div>
+            <div className="field">
+              <label>Grupo</label>
+              {groupOptions.length ? (
+                <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+                  {groupOptions.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--mute)',
+                    padding: '11px 14px',
+                    border: '1px dashed var(--hair)',
+                    borderRadius: 8,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Nenhum grupo {platform === 'whatsapp' ? 'do WhatsApp' : 'do Telegram'} cadastrado —
+                  adicione em <b>Configurações</b> antes de disparar.
+                </div>
+              )}
+            </div>
+            <div className="field">
+              <label>Janela (horas)</label>
+              <input
+                type="number"
+                min={1}
+                value={windowHours}
+                onChange={(e) => setWindowHours(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <button
+                className="btn"
+                onClick={trigger}
+                disabled={loading || !groupId.trim() || availableCount === 0}
+                title={
+                  availableCount === 0
+                    ? 'Nenhuma mensagem capturada — use "Colar texto" para testar, ou aguarde o bot receber mensagens'
+                    : undefined
+                }
+              >
+                {loading ? 'rodando…' : mode === 'preview' ? 'Pré-visualizar' : 'Rodar agora'}
+              </button>
+            </div>
+          </div>
+          {groupId.trim() && (
             <div
               style={{
-                fontSize: 12,
-                color: 'var(--mute)',
-                padding: '11px 14px',
-                border: '1px dashed var(--hair)',
+                marginTop: 12,
+                padding: '10px 14px',
                 borderRadius: 8,
-                lineHeight: 1.45,
+                fontSize: 12.5,
+                background:
+                  availableCount === null || countLoading
+                    ? 'var(--bone)'
+                    : availableCount === 0
+                      ? '#fff4f0'
+                      : '#f0f9f0',
+                border: `1px solid ${
+                  availableCount === 0 && !countLoading ? 'var(--orange)' : 'var(--hair)'
+                }`,
+                color: 'var(--ink-2)',
               }}
             >
-              Nenhum grupo {platform === 'whatsapp' ? 'do WhatsApp' : 'do Telegram'} cadastrado —
-              adicione em <b>Configurações</b> antes de disparar.
+              {countLoading ? (
+                <span>contando mensagens…</span>
+              ) : availableCount === null ? (
+                <span style={{ color: 'var(--mute)' }}>sem dados</span>
+              ) : availableCount === 0 ? (
+                <span>
+                  <b style={{ color: 'var(--orange)' }}>Nenhuma mensagem capturada</b> para este grupo
+                  na janela de {windowHours}h. Verifique se o bot está no grupo e se as mensagens
+                  estão chegando — ou use <b>Colar texto</b> acima para testar o resumo.
+                </span>
+              ) : (
+                <span>
+                  <b>{availableCount}</b> mensagem(ns) disponível(is) na janela de {windowHours}h ·
+                  pronto para gerar resumo
+                </span>
+              )}
             </div>
           )}
-        </div>
-        <div className="field">
-          <label>Janela (horas)</label>
-          <input
-            type="number"
-            min={1}
-            value={windowHours}
-            onChange={(e) => setWindowHours(Number(e.target.value))}
-          />
-        </div>
-        <div>
-          <button className="btn" onClick={trigger} disabled={loading}>
-            {loading ? 'rodando…' : mode === 'preview' ? 'Pré-visualizar' : 'Rodar agora'}
-          </button>
-        </div>
-      </div>
+        </>
+      )}
       {lastPreview && (
         <div
           style={{
