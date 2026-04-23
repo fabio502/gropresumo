@@ -1060,9 +1060,62 @@ function ManualTrigger({
   const [mode, setMode] = useState<'preview' | 'run'>('preview');
   const [loading, setLoading] = useState(false);
   const [lastPreview, setLastPreview] = useState<string | null>(null);
+  const [groupOptions, setGroupOptions] = useState<{ id: string; label: string }[]>([]);
   const flashRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => setWindowHours(windowHoursDefault), [windowHoursDefault]);
+
+  // Carrega grupos cadastrados de acordo com a plataforma.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (platform === 'whatsapp') {
+          const r = await fetch('/api/settings', { cache: 'no-store' });
+          const cfg = await r.json();
+          const groups: string[] = cfg?.evolution?.groups ?? [];
+          if (!cancelled) {
+            setGroupOptions(groups.map((g) => ({ id: g, label: g })));
+          }
+        } else {
+          const [sRes, cRes] = await Promise.all([
+            fetch('/api/settings', { cache: 'no-store' }),
+            fetch('/api/telegram/chats', { cache: 'no-store' }).catch(() => null),
+          ]);
+          const cfg = await sRes.json();
+          const ids: number[] = cfg?.telegram?.groups ?? [];
+          const titleMap = new Map<number, string>();
+          if (cRes && cRes.ok) {
+            const data = await cRes.json();
+            for (const c of (data?.chats ?? []) as { chatId: number; title: string | null }[]) {
+              if (c.title) titleMap.set(c.chatId, c.title);
+            }
+          }
+          if (!cancelled) {
+            setGroupOptions(
+              ids.map((id) => ({
+                id: String(id),
+                label: titleMap.get(id) ? `${titleMap.get(id)} (${id})` : String(id),
+              })),
+            );
+          }
+        }
+      } catch {
+        if (!cancelled) setGroupOptions([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [platform]);
+
+  // Quando a lista muda, seleciona automaticamente o primeiro se groupId atual nao estiver nela
+  useEffect(() => {
+    if (!groupOptions.length) return;
+    if (!groupOptions.find((g) => g.id === groupId)) {
+      setGroupId(groupOptions[0].id);
+    }
+  }, [groupOptions, groupId]);
 
   useEffect(() => {
     if (!intent || intent.nonce === 0) return;
@@ -1130,12 +1183,30 @@ function ManualTrigger({
           </select>
         </div>
         <div className="field">
-          <label>Group ID</label>
-          <input
-            placeholder={platform === 'whatsapp' ? '...@g.us' : '-100...'}
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-          />
+          <label>Grupo</label>
+          {groupOptions.length ? (
+            <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              {groupOptions.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--mute)',
+                padding: '11px 14px',
+                border: '1px dashed var(--hair)',
+                borderRadius: 8,
+                lineHeight: 1.45,
+              }}
+            >
+              Nenhum grupo {platform === 'whatsapp' ? 'do WhatsApp' : 'do Telegram'} cadastrado —
+              adicione em <b>Configurações</b> antes de disparar.
+            </div>
+          )}
         </div>
         <div className="field">
           <label>Janela (horas)</label>
